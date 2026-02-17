@@ -28,12 +28,12 @@ function DetailPanel({ point, onClose }) {
     setAqStatus('loading'); setAqData(null);
     setSpStatus('loading'); setSpecies([]);
 
-    fetch(`http://localhost:5000/api/airquality?lat=${point.lat}&lng=${point.lng}`)
+    fetch(`/api/airquality?lat=${point.lat}&lng=${point.lng}`)
       .then(r => r.json())
       .then(d => { setAqData(d); setAqStatus(d ? 'done' : 'empty'); })
       .catch(() => setAqStatus('error'));
 
-    fetch(`http://localhost:5000/api/species?lat=${point.lat}&lng=${point.lng}`)
+    fetch(`/api/species?lat=${point.lat}&lng=${point.lng}`)
       .then(r => r.json())
       .then(d => { setSpecies(Array.isArray(d) ? d : []); setSpStatus('done'); })
       .catch(() => setSpStatus('error'));
@@ -314,7 +314,7 @@ export default function FireGlobe() {
   }, []);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/fires')
+    fetch('/api/fires')
       .then(r => r.json())
       .then(fires => {
         firesRef.current = fires;

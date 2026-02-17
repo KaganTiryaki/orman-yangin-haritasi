@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -111,5 +112,10 @@ app.get('/api/species', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// Serve React build in production
+const buildPath = path.join(__dirname, '../frontend/build');
+app.use(express.static(buildPath));
+app.get('*', (req, res) => res.sendFile(path.join(buildPath, 'index.html')));
 
 app.listen(5000, () => { console.log('Port 5000'); getFires(); });
