@@ -93,7 +93,7 @@ export default function PreventionTips() {
     <div style={{
       minHeight: '100vh',
       background: '#000',
-      padding: '100px 20px 80px'
+      padding: 'clamp(50px, 8vw, 100px) clamp(16px, 5vw, 40px) 80px'
     }}>
       <motion.div
         initial={{ opacity: 0, y: 40 }}
@@ -110,7 +110,7 @@ export default function PreventionTips() {
           Prevention Guide
         </span>
         <h2 style={{
-          color: '#fff', fontSize: 36, fontWeight: 700,
+          color: '#fff', fontSize: 'clamp(26px, 6vw, 36px)', fontWeight: 700,
           marginBottom: 14
         }}>
           How to Prevent Wildfires
