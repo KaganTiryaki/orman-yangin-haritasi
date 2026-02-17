@@ -118,4 +118,5 @@ const buildPath = path.join(__dirname, '../frontend/build');
 app.use(express.static(buildPath));
 app.get('*', (req, res) => res.sendFile(path.join(buildPath, 'index.html')));
 
-app.listen(5000, () => { console.log('Port 5000'); getFires(); });
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => { console.log(`Port ${PORT}`); getFires(); });
