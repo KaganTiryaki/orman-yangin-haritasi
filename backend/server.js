@@ -113,10 +113,18 @@ app.get('/api/species', async (req, res) => {
   }
 });
 
-// Serve React build in production
-const buildPath = path.join(__dirname, '../frontend/build');
-app.use(express.static(buildPath));
-app.get('*', (req, res) => res.sendFile(path.join(buildPath, 'index.html')));
+// Serve React build in production (local/Railway only, Vercel handles statics itself)
+if (!process.env.VERCEL) {
+  const buildPath = path.join(__dirname, '../frontend/build');
+  app.use(express.static(buildPath));
+  app.get('*', (req, res) => res.sendFile(path.join(buildPath, 'index.html')));
+}
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => { console.log(`Port ${PORT}`); getFires(); });
+if (require.main === module) {
+  app.listen(PORT, () => { console.log(`Port ${PORT}`); getFires(); });
+} else {
+  getFires();
+}
+
+module.exports = app;
