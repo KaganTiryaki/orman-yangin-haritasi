@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import Globe from 'globe.gl';
 import '../App.css';
 
-/* ─── Fire intensity → color ─── */
+/* ─── Fire intensity → neon red color ─── */
 function fireColor(frp) {
-  if (frp < 20) return '#FFD700';
-  if (frp < 40) return '#FFA500';
-  if (frp < 70) return '#FF4500';
-  if (frp < 120) return '#DC143C';
-  return '#8B0000';
+  if (frp < 30)  return '#FF4466';  /* bright red */
+  if (frp < 70)  return '#FF0033';  /* neon red */
+  if (frp < 150) return '#CC0022';  /* deep neon red */
+  return '#FF0077';                  /* extreme — hot pink-red */
 }
 
 const AQ_COLORS = {
@@ -465,8 +464,8 @@ function DetailPanel({ point, onClose }) {
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
-          <div style={{ color: '#FF8C00', fontSize: 10, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 3 }}>
-            Ecological Fire Point
+          <div style={{ color: '#FF0033', fontSize: 8.5, fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 3 }}>
+            Confirmed Extreme Heat Source
           </div>
           {point.country && (
             <div style={{ color: '#ddd', fontSize: 14, fontWeight: 700, marginBottom: 1 }}>{point.country}</div>
@@ -611,7 +610,12 @@ function DetailPanel({ point, onClose }) {
         )}
       </Section>
 
-      <div style={{ color: '#2a2a2a', fontSize: 10, marginTop: 16, textAlign: 'right' }}>NASA FIRMS · OpenAQ · GBIF · NewsAPI</div>
+      <div style={{ marginTop: 16, borderTop: '1px solid rgba(255,0,51,0.1)', paddingTop: 10 }}>
+        <div style={{ color: '#FF0033', fontSize: 8, fontWeight: 700, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 4 }}>
+          ◉ Showing only 100% verified satellite detections
+        </div>
+        <div style={{ color: '#2a2a2a', fontSize: 9, textAlign: 'right' }}>NASA FIRMS · OpenAQ · GBIF · NewsAPI</div>
+      </div>
     </div>
   );
 }
@@ -757,11 +761,10 @@ function haversine(lat1, lng1, lat2, lng2) {
 /* ─── Fire Intensity Legend ─── */
 function FireLegend() {
   const tiers = [
-    { color: '#FFD700', range: '< 20 MW',    label: 'Low' },
-    { color: '#FFA500', range: '20–40 MW',   label: 'Moderate' },
-    { color: '#FF4500', range: '40–70 MW',   label: 'High' },
-    { color: '#DC143C', range: '70–120 MW',  label: 'Severe' },
-    { color: '#8B0000', range: '> 120 MW',   label: 'Extreme' },
+    { color: '#FF4466', range: '< 30 MW',    label: 'High' },
+    { color: '#FF0033', range: '30–70 MW',   label: 'Severe' },
+    { color: '#CC0022', range: '70–150 MW',  label: 'Extreme' },
+    { color: '#FF0077', range: '> 150 MW',   label: 'Critical' },
   ];
   return (
     <div style={{
@@ -771,9 +774,10 @@ function FireLegend() {
       border: '1px solid rgba(255,255,255,0.07)',
       borderRadius: 10, padding: '10px 13px',
     }}>
-      <div style={{ color: '#666', fontSize: 8.5, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
-        Fire Intensity (FRP)
+      <div style={{ color: '#FF0033', fontSize: 8, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 2, fontWeight: 700 }}>
+        Confirmed Extreme Sources
       </div>
+      <div style={{ color: '#444', fontSize: 7.5, marginBottom: 8 }}>FRP · High Confidence Only</div>
       {tiers.map((t, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i < 4 ? 5 : 0 }}>
           <div style={{
@@ -811,7 +815,7 @@ export default function FireGlobe() {
       .pointLat(d => d[0])
       .pointLng(d => d[1])
       .pointColor(d => fireColor(d[2]))
-      .pointRadius(d => Math.min(0.15 + d[2] / 200, 0.5))
+      .pointRadius(d => Math.min(0.22 + d[2] / 160, 0.65))
       .pointAltitude(0)
       .pointsMerge(true)
       .pointResolution(3)
@@ -947,19 +951,15 @@ export default function FireGlobe() {
         firesRef.current = fires;
         if (globe.current) {
           globe.current.pointsData(fires);
-          /* Pulsing rings for fires with FRP > 40 */
-          const ringFires = fires.filter(f => f[2] > 40);
+          /* Radar ping — all confirmed fires, neon red */
           globe.current
-            .ringsData(ringFires)
+            .ringsData(fires)
             .ringLat(d => d[0])
             .ringLng(d => d[1])
-            .ringColor(d => {
-              const r = d[2] > 120 ? '255,40,0' : d[2] > 70 ? '255,90,0' : '255,150,0';
-              return t => `rgba(${r},${Math.pow(1 - t, 1.6) * 0.75})`;
-            })
-            .ringMaxRadius(d => Math.min(1.8 + d[2] / 120, 4))
-            .ringPropagationSpeed(d => 1.2 + d[2] / 400)
-            .ringRepeatPeriod(d => Math.max(2200 - d[2] * 5, 900));
+            .ringColor(() => t => `rgba(255,0,51,${Math.pow(1 - t, 1.3) * 0.82})`)
+            .ringMaxRadius(d => Math.min(2.2 + d[2] / 90, 5))
+            .ringPropagationSpeed(d => 1.6 + d[2] / 300)
+            .ringRepeatPeriod(d => Math.max(1800 - d[2] * 4, 650));
         }
         setFireCount(fires.length);
         setStatus('done');
@@ -988,7 +988,7 @@ export default function FireGlobe() {
         {status === 'done' && (
           <div style={{ color: '#FF8C00', fontSize: isMobile ? 18 : 22, fontWeight: 700, marginTop: 6 }}>
             {fireCount.toLocaleString()}
-            <span style={{ color: '#aaa', fontSize: isMobile ? 10 : 12, fontWeight: 400, marginLeft: 5 }}>fire points detected</span>
+            <span style={{ color: '#aaa', fontSize: isMobile ? 10 : 12, fontWeight: 400, marginLeft: 5 }}>extreme heat sources</span>
           </div>
         )}
         {status === 'done' && (

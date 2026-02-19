@@ -13,12 +13,21 @@ module.exports = async (req, res) => {
     const lines = data.split('\n');
     const h = lines[0].split(',');
     const li = h.indexOf('latitude'), lo = h.indexOf('longitude'), fi = h.indexOf('frp');
+    const ci = h.indexOf('confidence');
     const fires = [];
     for (let i = 1; i < lines.length; i++) {
       const c = lines[i].split(',');
       if (c.length < h.length) continue;
       const frp = parseFloat(c[fi]) || 0;
       if (frp < 10) continue;
+      /* Only highest confidence — 'h' for VIIRS categorical, or numeric >= 80 */
+      if (ci >= 0) {
+        const conf = c[ci]?.trim().toLowerCase();
+        if (!conf) continue;
+        const num = parseFloat(conf);
+        const isHigh = conf === 'h' || (!isNaN(num) && num >= 80);
+        if (!isHigh) continue;
+      }
       fires.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
     }
     cache = fires;
