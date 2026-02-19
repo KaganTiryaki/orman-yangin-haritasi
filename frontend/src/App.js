@@ -1,6 +1,7 @@
 import React from 'react';
 import FireGlobe from './components/FireGlobe';
 import PreventionTips from './components/PreventionTips';
+import WaterCalculator from './components/WaterCalculator';
 import './App.css';
 
 function App() {
@@ -8,6 +9,7 @@ function App() {
     <div>
       <FireGlobe />
       <PreventionTips />
+      <WaterCalculator />
     </div>
   );
 }
