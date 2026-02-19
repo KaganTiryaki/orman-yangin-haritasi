@@ -19,12 +19,15 @@ async function getFires() {
     const lines = data.split('\n');
     const h = lines[0].split(',');
     const li = h.indexOf('latitude'), lo = h.indexOf('longitude'), fi = h.indexOf('frp');
+    const ci = h.indexOf('confidence');
     const fires = [];
     for (let i = 1; i < lines.length; i++) {
       const c = lines[i].split(',');
       if (c.length < h.length) continue;
       const frp = parseFloat(c[fi]) || 0;
       if (frp < 10) continue;
+      const conf = ci >= 0 ? (c[ci]?.trim().toLowerCase() || '') : '';
+      if (conf !== 'h') continue;
       fires.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
     }
     cache = fires;

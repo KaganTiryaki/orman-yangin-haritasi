@@ -20,14 +20,9 @@ module.exports = async (req, res) => {
       if (c.length < h.length) continue;
       const frp = parseFloat(c[fi]) || 0;
       if (frp < 10) continue;
-      /* Only highest confidence — 'h' for VIIRS categorical, or numeric >= 80 */
-      if (ci >= 0) {
-        const conf = c[ci]?.trim().toLowerCase();
-        if (!conf) continue;
-        const num = parseFloat(conf);
-        const isHigh = conf === 'h' || (!isNaN(num) && num >= 80);
-        if (!isHigh) continue;
-      }
+      /* Only 'h' (high confidence) — l and n are discarded */
+      const conf = ci >= 0 ? (c[ci]?.trim().toLowerCase() || '') : '';
+      if (conf !== 'h') continue;
       fires.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
     }
     cache = fires;
