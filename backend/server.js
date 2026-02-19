@@ -28,7 +28,7 @@ async function getFires() {
       if (frp < 10) continue;
       const conf = ci >= 0 ? (c[ci]?.trim() || '') : '';
       const num  = parseFloat(conf);
-      if (conf.toLowerCase() !== 'h' && !(num >= 95)) continue;
+      if (conf.toLowerCase() === 'l' || (isNaN(num) && conf.toLowerCase() !== 'h' && conf.toLowerCase() !== 'n')) continue;
       fires.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
     }
     cache = fires;
