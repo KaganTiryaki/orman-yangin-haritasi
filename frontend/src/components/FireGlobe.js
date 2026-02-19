@@ -511,26 +511,45 @@ function DetailPanel({ point, onClose }) {
 
       <Section title="News Verification" icon="📰" info="Recent news articles about wildfires in this region, sourced from NewsAPI. A 'Verified by News' badge appears when media coverage confirms active fires.">
         {newsStatus === 'loading' && <SpinGlobe text="Scanning news sources..." />}
-        {newsStatus === 'error' && <Hint error>News search failed</Hint>}
-        {newsStatus === 'rateLimit' && (
-          <Hint>
-            Daily news limit reached (100 req/day) —{' '}
+        {(newsStatus === 'error' || newsStatus === 'rateLimit' || (newsStatus === 'done' && news.length === 0)) && (
+          <div style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 8,
+            padding: '10px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+          }}>
+            <div style={{ color: '#666', fontSize: 10.5, lineHeight: 1.5 }}>
+              News verification is currently unavailable. Click the button below for a manual search.
+            </div>
             <a
-              href={`https://news.google.com/search?q=${encodeURIComponent((point.country || '') + ' wildfire')}`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ color: '#888', textDecoration: 'underline' }}
-            >Google News →</a>
-          </Hint>
-        )}
-        {newsStatus === 'done' && news.length === 0 && (
-          <Hint>
-            No recent coverage found —{' '}
-            <a
-              href={`https://news.google.com/search?q=${encodeURIComponent((point.country || '') + ' wildfire')}`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ color: '#888', textDecoration: 'underline' }}
-            >Google News →</a>
-          </Hint>
+              href={`https://news.google.com/search?q=${encodeURIComponent((point.country || 'wildfire') + ' wildfire fire')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 6,
+                padding: '7px 12px',
+                color: '#bbb',
+                fontSize: 11,
+                fontWeight: 600,
+                textDecoration: 'none',
+                letterSpacing: 0.3,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+            >
+              🔍 Search on Google News
+            </a>
+          </div>
         )}
         {newsStatus === 'done' && news.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
