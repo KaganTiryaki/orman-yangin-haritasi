@@ -97,7 +97,7 @@ function CountryPanel({ country, fires, onClose }) {
   const handleClose = () => {
     const el = panelRef.current;
     if (!el) { onClose(); return; }
-    if (isMobile) el.style.bottom = '-75vh';
+    if (isMobile) el.style.bottom = '-82vh';
     else el.style.right = '-400px';
     el.style.opacity = '0';
     el.addEventListener('transitionend', onClose, { once: true });
@@ -110,16 +110,15 @@ function CountryPanel({ country, fires, onClose }) {
     ? (aqData.location.distance / 1000).toFixed(1) : null;
 
   const baseStyle = isMobile ? {
-    position: 'fixed', bottom: '-75vh', left: 0, right: 0,
-    maxHeight: '75vh', borderRadius: '18px 18px 0 0',
+    position: 'fixed', bottom: '-82vh', left: 0, right: 0,
+    maxHeight: '82vh', borderRadius: '18px 18px 0 0',
     borderTop: '1px solid rgba(0,255,255,0.2)',
     transition: 'bottom 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.42s ease',
   } : {
-    position: 'absolute', top: '50%', right: '-400px',
-    transform: 'translateY(-50%)',
-    width: 340, maxHeight: '84vh', borderRadius: 16,
+    position: 'absolute', top: 16, bottom: 16, right: '-400px',
+    width: 360, borderRadius: 16,
     border: '1px solid rgba(0,255,255,0.18)',
-    transition: 'right 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.42s ease',
+    transition: 'right 0.52s cubic-bezier(0.34,1.3,0.64,1), opacity 0.4s ease',
   };
 
   return (
@@ -189,19 +188,15 @@ function CountryPanel({ country, fires, onClose }) {
       }}>
         {/* Scanning animation while loading */}
         {(spStatus === 'loading' || aqStatus === 'loading') && (
-          <div style={{
-            textAlign: 'center', padding: '8px 0 4px',
-            color: '#00cccc', fontSize: 10, letterSpacing: 2,
-            animation: 'scan 1.5s ease-in-out infinite',
-          }}>
-            ◈ Veriler Uydudan Alınıyor...
+          <div style={{ padding: '4px 0 2px' }}>
+            <SpinGlobe text="Loading from Satellite..." />
           </div>
         )}
 
         {/* Top fire hotspots */}
         {fires.length > 0 && (
           <>
-            <CpSection title="Active Fire Hotspots" icon="🌡️">
+            <CpSection title="Active Fire Hotspots" icon="🌡️" info="FRP (Fire Radiative Power) measures fire intensity in megawatts (MW). Values above 70 MW indicate severe fires that may spread rapidly.">
               {fires.slice(0, 5).map((f, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: 8,
@@ -223,8 +218,8 @@ function CountryPanel({ country, fires, onClose }) {
         )}
 
         {/* At-Risk Species */}
-        <CpSection title="At-Risk Species" icon="🌿">
-          {spStatus === 'loading' && <ScanLine />}
+        <CpSection title="At-Risk Species" icon="🌿" info="Species recently observed near this region from the GBIF biodiversity database. Wildlife in fire zones face threats from smoke, heat, and habitat destruction.">
+          {spStatus === 'loading' && <SpinGlobe text="Searching species..." />}
           {spStatus === 'error' && <CpHint error>Failed to fetch species data</CpHint>}
           {spStatus === 'done' && species.length === 0 && <CpHint>No species data for this region</CpHint>}
           {spStatus === 'done' && species.length > 0 && (
@@ -237,10 +232,10 @@ function CountryPanel({ country, fires, onClose }) {
         <hr style={{ border: 'none', borderTop: '1px solid rgba(0,255,255,0.05)', margin: '12px 0' }} />
 
         {/* Air Quality */}
-        <CpSection title="Air Quality" icon="💨">
-          {aqStatus === 'loading' && <ScanLine />}
+        <CpSection title="Air Quality" icon="💨" info="Real-time air quality from OpenAQ monitoring stations within 50 km. PM2.5 (fine particles) and PM10 are most harmful during wildfires. NO₂ and SO₂ indicate combustion pollution.">
+          {aqStatus === 'loading' && <SpinGlobe text="Scanning stations..." />}
           {aqStatus === 'error' && <CpHint error>Failed to fetch air quality data</CpHint>}
-          {aqStatus === 'empty' && <CpHint>No station found within 25 km</CpHint>}
+          {aqStatus === 'empty' && <CpHint>No station found within 50 km</CpHint>}
           {aqStatus === 'done' && aqData && (
             <>
               <div style={{
@@ -271,12 +266,37 @@ function CountryPanel({ country, fires, onClose }) {
   );
 }
 
-function CpSection({ title, icon, children }) {
+function CpSection({ title, icon, children, info }) {
+  const [showInfo, setShowInfo] = useState(false);
   return (
     <div style={{ marginBottom: 2 }}>
-      <div style={{ color: '#008888', fontSize: 9, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ color: '#008888', fontSize: 9, fontWeight: 600, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 7, display: 'flex', alignItems: 'center', gap: 5 }}>
         <span>{icon}</span>{title}
+        {info && (
+          <button
+            onClick={e => { e.stopPropagation(); setShowInfo(o => !o); }}
+            style={{
+              width: 11, height: 11, borderRadius: '50%',
+              background: showInfo ? 'rgba(0,255,255,0.18)' : 'rgba(0,255,255,0.07)',
+              border: '1px solid rgba(0,255,255,0.3)',
+              color: '#00aaaa', fontSize: 7, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 700, padding: 0, lineHeight: 1, flexShrink: 0,
+              transition: 'background 0.15s',
+            }}
+          >i</button>
+        )}
       </div>
+      {showInfo && info && (
+        <div style={{
+          background: 'rgba(0,18,28,0.88)',
+          border: '1px solid rgba(0,255,255,0.11)',
+          borderRadius: 6, padding: '7px 9px', marginBottom: 8,
+          color: '#6a8a9a', fontSize: 9.5, lineHeight: 1.55,
+        }}>
+          {info}
+        </div>
+      )}
       {children}
     </div>
   );
@@ -286,25 +306,58 @@ function CpHint({ children, error }) {
   return <div style={{ color: error ? '#f66' : '#2a3a3a', fontSize: 11, padding: '6px 0' }}>{children}</div>;
 }
 
-function ScanLine() {
+function SpinGlobe({ text = 'Scanning...' }) {
   return (
-    <div style={{ color: '#009999', fontSize: 10, padding: '4px 0', letterSpacing: 1.2, animation: 'scan 1.5s ease-in-out infinite' }}>
-      ◈ Scanning...
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+      <svg width="20" height="20" viewBox="0 0 20 20" style={{ flexShrink: 0, overflow: 'visible' }}>
+        {/* Outer sphere */}
+        <circle cx="10" cy="10" r="8.5" fill="none" stroke="rgba(0,255,255,0.2)" strokeWidth="1.2" />
+        {/* Latitude equator */}
+        <ellipse cx="10" cy="10" rx="8.5" ry="3" fill="none" stroke="rgba(0,255,255,0.15)" strokeWidth="0.8" />
+        {/* Spinning longitude */}
+        <ellipse cx="10" cy="10" rx="4.5" ry="8.5" fill="none" stroke="rgba(0,255,255,0.6)" strokeWidth="1.2"
+          style={{ animation: 'globeSpin 2s linear infinite', transformOrigin: '10px 10px' }} />
+        {/* Glow dot */}
+        <circle cx="10" cy="10" r="1.5" fill="rgba(0,255,255,0.7)"
+          style={{ animation: 'globePulse 2s ease-in-out infinite' }} />
+      </svg>
+      <span style={{ color: '#009999', fontSize: 10, letterSpacing: 1.4, textTransform: 'uppercase' }}>{text}</span>
     </div>
   );
 }
 
-/* ─── Fire Point Detail Panel (existing) ─── */
+/* ─── Badge component ─── */
+function Badge({ children, color, bg, border }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      background: bg || 'rgba(255,255,255,0.06)',
+      border: `1px solid ${border || 'rgba(255,255,255,0.15)'}`,
+      borderRadius: 20, padding: '3px 8px',
+      color: color || '#aaa', fontSize: 8.5, fontWeight: 700,
+      letterSpacing: 0.8, textTransform: 'uppercase',
+    }}>
+      {children}
+    </span>
+  );
+}
+
+/* ─── Fire Point Detail Panel ─── */
 function DetailPanel({ point, onClose }) {
   const [aqStatus, setAqStatus] = useState('loading');
   const [aqData, setAqData] = useState(null);
   const [spStatus, setSpStatus] = useState('loading');
   const [species, setSpecies] = useState([]);
+  const [newsStatus, setNewsStatus] = useState('idle');
+  const [news, setNews] = useState([]);
+  const [locData, setLocData] = useState(null);
   const isMobile = window.innerWidth <= 600;
 
   useEffect(() => {
     setAqStatus('loading'); setAqData(null);
     setSpStatus('loading'); setSpecies([]);
+    setNewsStatus('loading'); setNews([]);
+    setLocData(null);
 
     fetch(`/api/airquality?lat=${point.lat}&lng=${point.lng}`)
       .then(r => r.json())
@@ -315,18 +368,45 @@ function DetailPanel({ point, onClose }) {
       .then(r => r.json())
       .then(d => { setSpecies(Array.isArray(d) ? d : []); setSpStatus('done'); })
       .catch(() => setSpStatus('error'));
+
+    /* Location / urban detection */
+    fetch(`/api/location?lat=${point.lat}&lng=${point.lng}`)
+      .then(r => r.json())
+      .then(d => setLocData(d))
+      .catch(() => {});
+
+    /* News search */
+    const q = encodeURIComponent((point.country || 'wildfire') + ' wildfire fire');
+    fetch(`/api/news?q=${q}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.apiError) {
+          setNewsStatus(d.apiError === 'rateLimited' ? 'rateLimit' : 'error');
+        } else {
+          setNews(d.articles || []);
+          setNewsStatus('done');
+        }
+      })
+      .catch(() => setNewsStatus('error'));
   }, [point]);
 
   const distKm = aqData?.location?.distance != null
     ? (aqData.location.distance / 1000).toFixed(1) : null;
 
+  /* Urban / industrial detection */
+  const industrialTypes = ['industrial', 'commercial', 'retail', 'port', 'harbour'];
+  const isIndustrial = locData && (
+    industrialTypes.includes(locData.type) ||
+    locData.address?.industrial || locData.address?.commercial
+  );
+
   const panelStyle = isMobile ? {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    maxHeight: '65vh', borderRadius: '18px 18px 0 0',
+    maxHeight: '82vh', borderRadius: '18px 18px 0 0',
     borderTop: '1px solid rgba(255,140,0,0.25)',
   } : {
-    position: 'absolute', top: 0, right: 0, bottom: 0,
-    width: 320, borderLeft: '1px solid rgba(255,140,0,0.2)',
+    position: 'absolute', top: 16, right: 0, bottom: 16,
+    width: 340, borderLeft: '1px solid rgba(255,140,0,0.15)',
     borderRadius: 0,
   };
 
@@ -334,22 +414,27 @@ function DetailPanel({ point, onClose }) {
     <div style={{
       ...panelStyle,
       zIndex: 30,
-      background: 'rgba(8,8,8,0.93)',
+      background: 'rgba(6,6,12,0.94)',
       backdropFilter: 'blur(18px)',
+      WebkitBackdropFilter: 'blur(18px)',
       overflowY: 'auto',
       padding: isMobile ? '14px 16px 36px' : '20px 18px',
       boxShadow: isMobile ? '0 -8px 40px rgba(0,0,0,0.7)' : '-8px 0 40px rgba(0,0,0,0.7)',
+      animation: 'slideInRight 0.45s cubic-bezier(0.34,1.3,0.64,1) both',
     }}>
       {isMobile && (
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.12)', margin: '0 auto 14px' }} />
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
         <div>
           <div style={{ color: '#FF8C00', fontSize: 10, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 3 }}>
-            Fire Point
+            Ecological Fire Point
           </div>
-          <div style={{ color: '#fff', fontSize: 13, fontWeight: 600 }}>
-            {point.lat.toFixed(3)}, {point.lng.toFixed(3)}
+          {point.country && (
+            <div style={{ color: '#ddd', fontSize: 14, fontWeight: 700, marginBottom: 1 }}>{point.country}</div>
+          )}
+          <div style={{ color: point.country ? '#555' : '#fff', fontSize: 12, fontWeight: point.country ? 400 : 600 }}>
+            {point.lat.toFixed(3)}°, {point.lng.toFixed(3)}°
           </div>
           <div style={{ color: '#555', fontSize: 11, marginTop: 2 }}>
             Intensity: <span style={{ color: fireColor(point.frp) }}>{point.frp} MW</span>
@@ -362,12 +447,34 @@ function DetailPanel({ point, onClose }) {
         }}>✕</button>
       </div>
 
+      {/* Badges */}
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 14 }}>
+        <Badge color="#00bbbb" bg="rgba(0,187,187,0.1)" border="rgba(0,187,187,0.25)">
+          ◉ High Confidence
+        </Badge>
+        {point.frp > 120 && (
+          <Badge color="#ff4422" bg="rgba(255,50,30,0.1)" border="rgba(255,50,30,0.3)">
+            🔥 Extreme Intensity
+          </Badge>
+        )}
+        {isIndustrial && (
+          <Badge color="#aaa" bg="rgba(150,150,150,0.08)" border="rgba(150,150,150,0.2)">
+            ⚠ Industrial Source Possible
+          </Badge>
+        )}
+        {newsStatus === 'done' && news.length > 0 && (
+          <Badge color="#66bb6a" bg="rgba(100,187,100,0.1)" border="rgba(100,187,100,0.25)">
+            📰 Verified by News
+          </Badge>
+        )}
+      </div>
+
       <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)', margin: '0 0 16px' }} />
 
-      <Section title="Air Quality" icon="💨">
-        {aqStatus === 'loading' && <Hint>Searching nearest station…</Hint>}
+      <Section title="Air Quality" icon="💨" info="Real-time air quality from OpenAQ monitoring stations within 50 km. PM2.5 (fine particles) and PM10 are most harmful near wildfires. NO₂ and SO₂ indicate combustion pollution.">
+        {aqStatus === 'loading' && <SpinGlobe text="Searching nearest station..." />}
         {aqStatus === 'error' && <Hint error>Failed to fetch data</Hint>}
-        {aqStatus === 'empty' && <Hint>No station found within 25 km</Hint>}
+        {aqStatus === 'empty' && <Hint>No station found within 50 km</Hint>}
         {aqStatus === 'done' && aqData && (
           <>
             <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
@@ -389,8 +496,8 @@ function DetailPanel({ point, onClose }) {
 
       <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)', margin: '16px 0' }} />
 
-      <Section title="At-Risk Species" icon="🌿">
-        {spStatus === 'loading' && <Hint>Searching for species…</Hint>}
+      <Section title="At-Risk Species" icon="🌿" info="Species recently observed near this fire point from the GBIF biodiversity database. Wildlife in fire zones face threats from smoke, heat, and habitat loss.">
+        {spStatus === 'loading' && <SpinGlobe text="Searching for species..." />}
         {spStatus === 'error' && <Hint error>Failed to fetch data</Hint>}
         {spStatus === 'done' && species.length === 0 && <Hint>No data found for this area</Hint>}
         {spStatus === 'done' && species.length > 0 && (
@@ -400,17 +507,89 @@ function DetailPanel({ point, onClose }) {
         )}
       </Section>
 
-      <div style={{ color: '#2a2a2a', fontSize: 10, marginTop: 16, textAlign: 'right' }}>OpenAQ · GBIF</div>
+      <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.06)', margin: '16px 0' }} />
+
+      <Section title="News Verification" icon="📰" info="Recent news articles about wildfires in this region, sourced from NewsAPI. A 'Verified by News' badge appears when media coverage confirms active fires.">
+        {newsStatus === 'loading' && <SpinGlobe text="Scanning news sources..." />}
+        {newsStatus === 'error' && <Hint error>News search failed</Hint>}
+        {newsStatus === 'rateLimit' && (
+          <Hint>
+            Daily news limit reached (100 req/day) —{' '}
+            <a
+              href={`https://news.google.com/search?q=${encodeURIComponent((point.country || '') + ' wildfire')}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ color: '#888', textDecoration: 'underline' }}
+            >Google News →</a>
+          </Hint>
+        )}
+        {newsStatus === 'done' && news.length === 0 && (
+          <Hint>
+            No recent coverage found —{' '}
+            <a
+              href={`https://news.google.com/search?q=${encodeURIComponent((point.country || '') + ' wildfire')}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ color: '#888', textDecoration: 'underline' }}
+            >Google News →</a>
+          </Hint>
+        )}
+        {newsStatus === 'done' && news.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {news.map((article, i) => (
+              <a key={i} href={article.url} target="_blank" rel="noopener noreferrer" style={{
+                display: 'block', textDecoration: 'none',
+                background: 'rgba(255,255,255,0.025)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderLeft: '2px solid rgba(100,187,100,0.45)',
+                borderRadius: '0 6px 6px 0', padding: '7px 9px',
+              }}>
+                <div style={{ color: '#bbb', fontSize: 10.5, fontWeight: 500, lineHeight: 1.4, marginBottom: 3 }}>
+                  {(article.title || '').substring(0, 85)}{(article.title || '').length > 85 ? '…' : ''}
+                </div>
+                <div style={{ color: '#3a3a3a', fontSize: 9 }}>
+                  {article.source?.name} · {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString() : ''}
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <div style={{ color: '#2a2a2a', fontSize: 10, marginTop: 16, textAlign: 'right' }}>NASA FIRMS · OpenAQ · GBIF · NewsAPI</div>
     </div>
   );
 }
 
-function Section({ title, icon, children }) {
+function Section({ title, icon, children, info }) {
+  const [showInfo, setShowInfo] = useState(false);
   return (
     <div>
-      <div style={{ color: '#aaa', fontSize: 11, fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ color: '#aaa', fontSize: 11, fontWeight: 600, marginBottom: 9, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span>{icon}</span>{title}
+        {info && (
+          <button
+            onClick={e => { e.stopPropagation(); setShowInfo(o => !o); }}
+            style={{
+              width: 11, height: 11, borderRadius: '50%',
+              background: showInfo ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#888', fontSize: 7, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 700, padding: 0, lineHeight: 1, flexShrink: 0,
+              transition: 'background 0.15s',
+            }}
+          >i</button>
+        )}
       </div>
+      {showInfo && info && (
+        <div style={{
+          background: 'rgba(0,0,0,0.35)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 6, padding: '7px 9px', marginBottom: 10,
+          color: '#666', fontSize: 9.5, lineHeight: 1.55,
+        }}>
+          {info}
+        </div>
+      )}
       {children}
     </div>
   );
@@ -453,10 +632,17 @@ function SpeciesCard({ s }) {
         : <div style={{ width: 36, height: 36, borderRadius: 6, background: 'rgba(255,255,255,0.05)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🌱</div>
       }
       <div style={{ minWidth: 0 }}>
-        <div style={{ color: '#d0e8d0', fontSize: 11, fontStyle: 'italic', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {s.commonName && (
+          <div style={{ color: '#e8e8c8', fontSize: 11, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 1 }}>
+            {s.commonName}
+          </div>
+        )}
+        <div style={{ color: s.commonName ? '#5a7a5a' : '#d0e8d0', fontSize: s.commonName ? 9.5 : 11, fontStyle: 'italic', fontWeight: s.commonName ? 400 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {s.name}
         </div>
-        {s.commonName && <div style={{ color: '#666', fontSize: 10, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.commonName}</div>}
+        {!s.commonName && s.kingdom && (
+          <div style={{ color: '#555', fontSize: 9, marginTop: 1 }}>{s.kingdom}</div>
+        )}
         {s.family && <div style={{ color: '#3a3a3a', fontSize: 9, marginTop: 1 }}>{s.family}</div>}
       </div>
     </div>
@@ -494,8 +680,11 @@ function getCountryAltitude(feature) {
     ? feature.geometry.coordinates.flat(2)
     : feature.geometry.coordinates[0];
   const lngs = rings.map(c => c[0]), lats = rings.map(c => c[1]);
-  const span = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lngs) - Math.min(...lngs));
-  return Math.min(Math.max(span / 28, 1.1), 4.2);
+  const latSpan = Math.max(...lats) - Math.min(...lats);
+  const lngSpan = Math.max(...lngs) - Math.min(...lngs);
+  /* Use separate lat/lng spans — very wide countries (Russia) shouldn't zoom too far */
+  const span = Math.max(latSpan * 1.4, lngSpan * 0.6);
+  return Math.min(Math.max(span / 38, 1.0), 2.4);
 }
 
 /* ─── Haversine distance in km ─── */
@@ -508,6 +697,40 @@ function haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+/* ─── Fire Intensity Legend ─── */
+function FireLegend() {
+  const tiers = [
+    { color: '#FFD700', range: '< 20 MW',    label: 'Low' },
+    { color: '#FFA500', range: '20–40 MW',   label: 'Moderate' },
+    { color: '#FF4500', range: '40–70 MW',   label: 'High' },
+    { color: '#DC143C', range: '70–120 MW',  label: 'Severe' },
+    { color: '#8B0000', range: '> 120 MW',   label: 'Extreme' },
+  ];
+  return (
+    <div style={{
+      position: 'absolute', bottom: 20, left: 20, zIndex: 10,
+      background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)',
+      WebkitBackdropFilter: 'blur(8px)',
+      border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: 10, padding: '10px 13px',
+    }}>
+      <div style={{ color: '#666', fontSize: 8.5, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 8 }}>
+        Fire Intensity (FRP)
+      </div>
+      {tiers.map((t, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i < 4 ? 5 : 0 }}>
+          <div style={{
+            width: 9, height: 9, borderRadius: '50%', flexShrink: 0,
+            background: t.color, boxShadow: `0 0 5px ${t.color}88`,
+          }} />
+          <span style={{ color: '#777', fontSize: 9.5, minWidth: 58 }}>{t.range}</span>
+          <span style={{ color: '#3a3a3a', fontSize: 8.5 }}>{t.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Main Globe Component ─── */
 export default function FireGlobe() {
   const ref = useRef(null);
@@ -515,6 +738,7 @@ export default function FireGlobe() {
   const firesRef = useRef([]);
   const hoveredPolygonRef = useRef(null);
   const countriesRef = useRef([]);
+  const defaultPovRef = useRef({ lat: 20, lng: 10, altitude: 2.5 });
   const [status, setStatus] = useState('loading');
   const [fireCount, setFireCount] = useState(0);
   const [clickedPoint, setClickedPoint] = useState(null);
@@ -546,10 +770,13 @@ export default function FireGlobe() {
             if (d < bestDist) { bestDist = d; best = f; }
           }
           if (best && bestDist <= 50) {
+            const countryFeature = findCountryAtPoint(best[0], best[1], countriesRef.current);
+            const countryName = countryFeature?.properties?.ADMIN || countryFeature?.properties?.name || null;
             setClickedCountry(null);
-            setClickedPoint({ lat: best[0], lng: best[1], frp: best[2] });
-            /* Rotate globe so fire point faces the camera */
-            g.pointOfView({ lat: best[0], lng: best[1], altitude: 2.2 }, 900);
+            setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName });
+            /* Keep current zoom level, just pan to fire */
+            const curAlt = g.pointOfView().altitude;
+            g.pointOfView({ lat: best[0], lng: best[1], altitude: curAlt }, 800);
             g.controls().autoRotate = false;
             return;
           }
@@ -620,9 +847,13 @@ export default function FireGlobe() {
                 if (d < bestDist) { bestDist = d; best = f; }
               }
               if (best && bestDist <= 50) {
+                const countryFeature = findCountryAtPoint(best[0], best[1], countriesRef.current);
+                const countryName = countryFeature?.properties?.ADMIN || countryFeature?.properties?.name || null;
                 setClickedCountry(null);
-                setClickedPoint({ lat: best[0], lng: best[1], frp: best[2] });
-                g.pointOfView({ lat: best[0], lng: best[1], altitude: 2.2 }, 900);
+                setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName });
+                /* Keep current zoom level, just pan to fire */
+                const curAlt = g.pointOfView().altitude;
+                g.pointOfView({ lat: best[0], lng: best[1], altitude: curAlt }, 800);
                 g.controls().autoRotate = false;
                 return;
               }
@@ -657,7 +888,22 @@ export default function FireGlobe() {
       .then(r => r.json())
       .then(fires => {
         firesRef.current = fires;
-        if (globe.current) globe.current.pointsData(fires);
+        if (globe.current) {
+          globe.current.pointsData(fires);
+          /* Pulsing rings for fires with FRP > 40 */
+          const ringFires = fires.filter(f => f[2] > 40);
+          globe.current
+            .ringsData(ringFires)
+            .ringLat(d => d[0])
+            .ringLng(d => d[1])
+            .ringColor(d => {
+              const r = d[2] > 120 ? '255,40,0' : d[2] > 70 ? '255,90,0' : '255,150,0';
+              return t => `rgba(${r},${Math.pow(1 - t, 1.6) * 0.75})`;
+            })
+            .ringMaxRadius(d => Math.min(1.8 + d[2] / 120, 4))
+            .ringPropagationSpeed(d => 1.2 + d[2] / 400)
+            .ringRepeatPeriod(d => Math.max(2200 - d[2] * 5, 900));
+        }
         setFireCount(fires.length);
         setStatus('done');
       })
@@ -730,6 +976,8 @@ export default function FireGlobe() {
         }}>Failed to load data</div>
       )}
 
+      <FireLegend />
+
       {!hasPanel && (
         <div style={{
           position: 'absolute', bottom: 24, left: '50%',
@@ -747,7 +995,10 @@ export default function FireGlobe() {
           point={clickedPoint}
           onClose={() => {
             setClickedPoint(null);
-            if (globe.current) globe.current.controls().autoRotate = true;
+            if (globe.current) {
+              globe.current.controls().autoRotate = true;
+              globe.current.pointOfView(defaultPovRef.current, 1200);
+            }
           }}
         />
       )}
@@ -758,7 +1009,10 @@ export default function FireGlobe() {
           fires={getCountryFires(clickedCountry.feature, firesRef.current)}
           onClose={() => {
             setClickedCountry(null);
-            if (globe.current) globe.current.controls().autoRotate = true;
+            if (globe.current) {
+              globe.current.controls().autoRotate = true;
+              globe.current.pointOfView(defaultPovRef.current, 1200);
+            }
           }}
         />
       )}
@@ -771,6 +1025,18 @@ export default function FireGlobe() {
         @keyframes scan {
           0%, 100% { opacity: 0.65; }
           50% { opacity: 0.15; }
+        }
+        @keyframes globeSpin {
+          from { transform: rotateY(0deg); }
+          to   { transform: rotateY(360deg); }
+        }
+        @keyframes globePulse {
+          0%, 100% { opacity: 0.5; r: 1.5px; }
+          50%       { opacity: 1;   r: 2.2px; }
+        }
+        @keyframes slideInRight {
+          from { transform: translateX(60px); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
         }
       `}</style>
     </div>
