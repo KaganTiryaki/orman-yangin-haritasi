@@ -20,16 +20,34 @@ async function getFires() {
     const h = lines[0].split(',');
     const li = h.indexOf('latitude'), lo = h.indexOf('longitude'), fi = h.indexOf('frp');
     const ci = h.indexOf('confidence');
-    const fires = [];
+    const raw = [];
     for (let i = 1; i < lines.length; i++) {
       const c = lines[i].split(',');
       if (c.length < h.length) continue;
       const frp = parseFloat(c[fi]) || 0;
-      if (frp < 10) continue;
+      if (frp < 50) continue;
       const conf = ci >= 0 ? (c[ci]?.trim() || '') : '';
       if (conf !== 'high') continue;
-      fires.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
+      raw.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
     }
+    // Remove solitary pixels (sensor noise): keep only points with a
+    // neighbour within ~1 degree (~111 km)
+    const GRID = 1.0;
+    const gridCount = {};
+    for (const f of raw) {
+      const key = `${Math.floor(f[0]/GRID)},${Math.floor(f[1]/GRID)}`;
+      gridCount[key] = (gridCount[key] || 0) + 1;
+    }
+    const fires = raw.filter(f => {
+      const gx = Math.floor(f[0]/GRID), gy = Math.floor(f[1]/GRID);
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++) {
+          const cnt = gridCount[`${gx+dx},${gy+dy}`] || 0;
+          if (cnt > 0 && (dx !== 0 || dy !== 0)) return true;
+          if (cnt > 1 && dx === 0 && dy === 0) return true;
+        }
+      return false;
+    });
     cache = fires;
     cacheTime = Date.now();
     console.log(`${fires.length} fires loaded`);
