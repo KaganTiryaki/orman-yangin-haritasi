@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import Globe from 'globe.gl';
 import '../App.css';
 
-/* ─── Fire intensity → neon red color ─── */
+/* ─── Fire intensity → classic yellow → orange → red → maroon ─── */
 function fireColor(frp) {
-  if (frp < 30)  return '#FF4466';  /* bright red */
-  if (frp < 70)  return '#FF0033';  /* neon red */
-  if (frp < 150) return '#CC0022';  /* deep neon red */
-  return '#FF0077';                  /* extreme — hot pink-red */
+  if (frp < 50)  return '#FFD700';  /* yellow */
+  if (frp < 150) return '#FF6600';  /* orange */
+  if (frp < 300) return '#CC2200';  /* red */
+  return '#8B1A1A';                  /* deep maroon */
 }
 
 const AQ_COLORS = {
@@ -32,39 +32,6 @@ function getCountryCenter(feature) {
 function buildNewsUrl(name, lat, lng) {
   const region = name || (lat != null ? `${parseFloat(lat).toFixed(3)},${parseFloat(lng).toFixed(3)}` : 'wildfire');
   return `https://www.google.com/search?q=${encodeURIComponent(region + ' forest fire wildfire')}&tbm=nws`;
-}
-
-/* ─── Marker Clustering ─── */
-function gridSizeForAlt(alt) {
-  if (alt > 3)    return 10;
-  if (alt > 1.8)  return 5;
-  if (alt > 1.0)  return 2;
-  if (alt > 0.5)  return 0.8;
-  if (alt > 0.2)  return 0.25;
-  if (alt > 0.08) return 0.08;
-  return 0; // fully zoomed in — show individual fires
-}
-
-function gridCluster(fires, gridSize) {
-  if (gridSize === 0) {
-    return fires.map(f => ({ lat: f[0], lng: f[1], count: 1, frp: f[2], fires: [f] }));
-  }
-  const grid = {};
-  for (const f of fires) {
-    const key = `${Math.floor(f[0] / gridSize)},${Math.floor(f[1] / gridSize)}`;
-    if (!grid[key]) grid[key] = [];
-    grid[key].push(f);
-  }
-  return Object.values(grid).map(cells => {
-    const totalFrp = cells.reduce((s, f) => s + f[2], 0);
-    return {
-      lat: cells.reduce((s, f) => s + f[0] * f[2], 0) / totalFrp,
-      lng: cells.reduce((s, f) => s + f[1] * f[2], 0) / totalFrp,
-      count: cells.length,
-      frp: Math.max(...cells.map(f => f[2])),
-      fires: cells,
-    };
-  });
 }
 
 /* ─── Filter fires inside country bounding box ─── */
@@ -794,10 +761,10 @@ function haversine(lat1, lng1, lat2, lng2) {
 /* ─── Fire Intensity Legend ─── */
 function FireLegend() {
   const tiers = [
-    { color: '#FF4466', range: '< 30 MW',    label: 'High' },
-    { color: '#FF0033', range: '30–70 MW',   label: 'Severe' },
-    { color: '#CC0022', range: '70–150 MW',  label: 'Extreme' },
-    { color: '#FF0077', range: '> 150 MW',   label: 'Critical' },
+    { color: '#FFD700', range: '< 50 MW',    label: 'High' },
+    { color: '#FF6600', range: '50–150 MW',  label: 'Severe' },
+    { color: '#CC2200', range: '150–300 MW', label: 'Extreme' },
+    { color: '#8B1A1A', range: '> 300 MW',   label: 'Critical' },
   ];
   return (
     <div style={{
@@ -807,8 +774,8 @@ function FireLegend() {
       border: '1px solid rgba(255,255,255,0.07)',
       borderRadius: 10, padding: '10px 13px',
     }}>
-      <div style={{ color: '#FF0033', fontSize: 8, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 2, fontWeight: 700 }}>
-        Confirmed Extreme Sources
+      <div style={{ color: '#FF8C00', fontSize: 8, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 2, fontWeight: 700 }}>
+        Active Fire Hotspots
       </div>
       <div style={{ color: '#444', fontSize: 7.5, marginBottom: 8 }}>FRP · High Confidence Only</div>
       {tiers.map((t, i) => (
@@ -830,9 +797,6 @@ export default function FireGlobe() {
   const ref = useRef(null);
   const globe = useRef(null);
   const firesRef = useRef([]);
-  const clustersRef = useRef([]);
-  const lastGridSizeRef = useRef(-1);
-  const reclusterFnRef = useRef(null);
   const hoveredPolygonRef = useRef(null);
   const countriesRef = useRef([]);
   const defaultPovRef = useRef({ lat: 20, lng: 10, altitude: 2.5 });
@@ -848,57 +812,36 @@ export default function FireGlobe() {
     g.globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
       .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
       .pointsData([])
-      .pointLat(d => d.lat)
-      .pointLng(d => d.lng)
-      .pointColor(d => fireColor(d.frp))
-      .pointRadius(d => d.count > 1
-        ? Math.min(0.35 + Math.log(d.count) * 0.18, 1.0)
-        : Math.min(0.18 + d.frp / 220, 0.55))
-      .pointAltitude(d => d.count > 1 ? 0.015 : 0)
-      .pointsMerge(false)
-      .pointResolution(8)
-      .labelsData([])
-      .labelLat(d => d.lat)
-      .labelLng(d => d.lng)
-      .labelText(d => String(d.count))
-      .labelSize(d => Math.min(0.55 + Math.log10(d.count) * 0.4, 1.8))
-      .labelColor(() => '#fff')
-      .labelAltitude(0.03)
-      .labelDotRadius(0)
-      .labelResolution(3)
+      .pointLat(d => d[0])
+      .pointLng(d => d[1])
+      .pointColor(d => fireColor(d[2]))
+      .pointRadius(d => Math.min(0.15 + d[2] / 250, 0.55))
+      .pointAltitude(0)
+      .pointsMerge(true)
+      .pointResolution(4)
       .atmosphereColor('#1a5276')
       .atmosphereAltitude(0.15)
       .onGlobeClick(({ lat, lng }) => {
-        /* 1. Check for a nearby cluster/fire first (wins over country) */
-        const clusters = clustersRef.current;
-        if (clusters.length) {
+        /* Find nearest fire point */
+        const fires = firesRef.current;
+        if (fires.length) {
           let best = null, bestDist = Infinity;
-          for (const c of clusters) {
-            const d = haversine(lat, lng, c.lat, c.lng);
-            if (d < bestDist) { bestDist = d; best = c; }
+          for (const f of fires) {
+            const d = haversine(lat, lng, f[0], f[1]);
+            if (d < bestDist) { bestDist = d; best = f; }
           }
-          const searchRadius = Math.max(50, g.pointOfView().altitude * 500);
+          const searchRadius = Math.max(80, g.pointOfView().altitude * 600);
           if (best && bestDist <= searchRadius) {
-            if (best.count > 1) {
-              /* Zoom into cluster */
-              const newAlt = Math.max(g.pointOfView().altitude * 0.35, 0.08);
-              g.pointOfView({ lat: best.lat, lng: best.lng, altitude: newAlt }, 800);
-              g.controls().autoRotate = false;
-              return;
-            }
-            /* Single fire → DetailPanel */
-            const f = best.fires[0];
-            const countryFeature = findCountryAtPoint(f[0], f[1], countriesRef.current);
+            const countryFeature = findCountryAtPoint(best[0], best[1], countriesRef.current);
             const countryName = countryFeature?.properties?.ADMIN || countryFeature?.properties?.name || null;
             setClickedCountry(null);
-            setClickedPoint({ lat: f[0], lng: f[1], frp: f[2], country: countryName });
-            const curAlt = g.pointOfView().altitude;
-            g.pointOfView({ lat: f[0], lng: f[1], altitude: curAlt }, 800);
+            setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName });
+            g.pointOfView({ lat: best[0], lng: best[1], altitude: g.pointOfView().altitude }, 800);
             g.controls().autoRotate = false;
             return;
           }
         }
-        /* 2. No nearby cluster — show country panel */
+        /* No nearby fire — show country panel */
         const country = findCountryAtPoint(lat, lng, countriesRef.current);
         if (country) {
           const center = getCountryCenter(country);
@@ -955,29 +898,21 @@ export default function FireGlobe() {
             g.polygonAltitude(makeAlt);
           })
           .onPolygonClick((polygon, ev, { lat, lng }) => {
-            /* Polygons cover land — check for cluster/fire first, then country */
-            const clusters = clustersRef.current;
-            if (clusters.length) {
+            /* Check for nearby fire first */
+            const fires = firesRef.current;
+            if (fires.length) {
               let best = null, bestDist = Infinity;
-              for (const c of clusters) {
-                const d = haversine(lat, lng, c.lat, c.lng);
-                if (d < bestDist) { bestDist = d; best = c; }
+              for (const f of fires) {
+                const d = haversine(lat, lng, f[0], f[1]);
+                if (d < bestDist) { bestDist = d; best = f; }
               }
-              const searchRadius = Math.max(50, g.pointOfView().altitude * 500);
+              const searchRadius = Math.max(80, g.pointOfView().altitude * 600);
               if (best && bestDist <= searchRadius) {
-                if (best.count > 1) {
-                  const newAlt = Math.max(g.pointOfView().altitude * 0.35, 0.08);
-                  g.pointOfView({ lat: best.lat, lng: best.lng, altitude: newAlt }, 800);
-                  g.controls().autoRotate = false;
-                  return;
-                }
-                const f = best.fires[0];
-                const countryFeature = findCountryAtPoint(f[0], f[1], countriesRef.current);
+                const countryFeature = findCountryAtPoint(best[0], best[1], countriesRef.current);
                 const countryName = countryFeature?.properties?.ADMIN || countryFeature?.properties?.name || null;
                 setClickedCountry(null);
-                setClickedPoint({ lat: f[0], lng: f[1], frp: f[2], country: countryName });
-                const curAlt = g.pointOfView().altitude;
-                g.pointOfView({ lat: f[0], lng: f[1], altitude: curAlt }, 800);
+                setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName });
+                g.pointOfView({ lat: best[0], lng: best[1], altitude: g.pointOfView().altitude }, 800);
                 g.controls().autoRotate = false;
                 return;
               }
@@ -994,22 +929,6 @@ export default function FireGlobe() {
       })
       .catch(() => { /* GeoJSON fetch failed — borders just won't show */ });
 
-    /* ── Adaptive clustering: recalculate when zoom (altitude) changes ── */
-    const recluster = () => {
-      const fires = firesRef.current;
-      if (!fires.length) return;
-      const alt = g.pointOfView().altitude;
-      const gs = gridSizeForAlt(alt);
-      if (gs === lastGridSizeRef.current) return; // same zoom tier — skip
-      lastGridSizeRef.current = gs;
-      const cls = gridCluster(fires, gs);
-      clustersRef.current = cls;
-      g.pointsData(cls);
-      g.labelsData(cls.filter(c => c.count > 1));
-    };
-    reclusterFnRef.current = recluster;
-    g.controls().addEventListener('change', recluster);
-
     const resize = () => { g.width(window.innerWidth); g.height(window.innerHeight); };
     window.addEventListener('resize', resize);
     resize();
@@ -1020,7 +939,6 @@ export default function FireGlobe() {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
-      g.controls().removeEventListener('change', recluster);
     };
   }, []);
 
@@ -1030,15 +948,13 @@ export default function FireGlobe() {
       .then(fires => {
         firesRef.current = fires;
         if (globe.current) {
-          /* Trigger initial clustering at current altitude */
-          lastGridSizeRef.current = -1;
-          if (reclusterFnRef.current) reclusterFnRef.current();
-          /* Radar ping — all confirmed fires, neon red */
+          globe.current.pointsData(fires);
+          /* Radar ping */
           globe.current
             .ringsData(fires)
             .ringLat(d => d[0])
             .ringLng(d => d[1])
-            .ringColor(() => t => `rgba(255,0,51,${Math.pow(1 - t, 1.3) * 0.82})`)
+            .ringColor(() => t => `rgba(255,120,0,${Math.pow(1 - t, 1.4) * 0.7})`)
             .ringMaxRadius(d => Math.min(2.2 + d[2] / 90, 5))
             .ringPropagationSpeed(d => 1.6 + d[2] / 300)
             .ringRepeatPeriod(d => Math.max(1800 - d[2] * 4, 650));
