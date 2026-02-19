@@ -3,28 +3,47 @@ const axios = require('axios');
 let cache = null;
 let cacheTime = 0;
 
-// Remove solitary pixels: keep only points that have at least one
-// other fire point within ~1 degree (~111 km) in any direction.
-function removeSolitary(fires) {
-  const GRID = 1.0;
-  const gridCount = {};
-  for (const f of fires) {
-    const key = `${Math.floor(f[0] / GRID)},${Math.floor(f[1] / GRID)}`;
-    gridCount[key] = (gridCount[key] || 0) + 1;
+function splitFires(lines, h) {
+  const li = h.indexOf('latitude'), lo = h.indexOf('longitude');
+  const fi = h.indexOf('frp'), ci = h.indexOf('confidence');
+  const raw = [];
+  for (let i = 1; i < lines.length; i++) {
+    const c = lines[i].split(',');
+    if (c.length < h.length) continue;
+    const frp  = parseFloat(c[fi]) || 0;
+    if (frp < 20) continue;
+    const conf = ci >= 0 ? (c[ci]?.trim() || '') : '';
+    if (conf !== 'high') continue;
+    raw.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
   }
-  return fires.filter(f => {
+
+  // Solitary-pixel check on the FRP>=50 subset
+  const highFrp = raw.filter(f => f[2] >= 50);
+  const GRID = 1.0;
+  const gc = {};
+  for (const f of highFrp) {
+    const k = `${Math.floor(f[0] / GRID)},${Math.floor(f[1] / GRID)}`;
+    gc[k] = (gc[k] || 0) + 1;
+  }
+  const hasNeighbour = f => {
     const gx = Math.floor(f[0] / GRID), gy = Math.floor(f[1] / GRID);
-    for (let dx = -1; dx <= 1; dx++) {
+    for (let dx = -1; dx <= 1; dx++)
       for (let dy = -1; dy <= 1; dy++) {
-        const key = `${gx + dx},${gy + dy}`;
-        const cnt = gridCount[key] || 0;
-        // neighbour cell with any point, OR same cell with more than 1 point
+        const cnt = gc[`${gx + dx},${gy + dy}`] || 0;
         if (cnt > 0 && (dx !== 0 || dy !== 0)) return true;
         if (cnt > 1 && dx === 0 && dy === 0) return true;
       }
-    }
     return false;
-  });
+  };
+
+  const verified   = highFrp.filter(hasNeighbour);
+  // unverified = low-frp high-confidence  +  solitary high-frp
+  const unverified = [
+    ...raw.filter(f => f[2] < 50),
+    ...highFrp.filter(f => !hasNeighbour(f)),
+  ];
+
+  return { verified, unverified };
 }
 
 module.exports = async (req, res) => {
@@ -36,24 +55,12 @@ module.exports = async (req, res) => {
     );
     const lines = data.split('\n');
     const h = lines[0].split(',');
-    const li = h.indexOf('latitude'), lo = h.indexOf('longitude'), fi = h.indexOf('frp');
-    const ci = h.indexOf('confidence');
-    const raw = [];
-    for (let i = 1; i < lines.length; i++) {
-      const c = lines[i].split(',');
-      if (c.length < h.length) continue;
-      const frp = parseFloat(c[fi]) || 0;
-      if (frp < 50) continue;                          // FRP eşiği: 50 MW
-      const conf = ci >= 0 ? (c[ci]?.trim() || '') : '';
-      if (conf !== 'high') continue;                   // Sadece high confidence
-      raw.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
-    }
-    const fires = removeSolitary(raw);                 // Solitary pixel temizliği
-    cache = fires;
+    const result = splitFires(lines, h);
+    cache = result;
     cacheTime = Date.now();
-    res.json(fires);
+    res.json(result);
   } catch (e) {
     console.error(e.message);
-    res.json(cache || []);
+    res.json(cache || { verified: [], unverified: [] });
   }
 };

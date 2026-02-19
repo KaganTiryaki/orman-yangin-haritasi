@@ -34,7 +34,7 @@ function buildNewsUrl(name, lat, lng) {
   return `https://www.google.com/search?q=${encodeURIComponent(region + ' forest fire wildfire')}&tbm=nws`;
 }
 
-/* ─── Filter fires inside country bounding box ─── */
+/* ─── Filter fires inside country bounding box (verified only) ─── */
 function getCountryFires(feature, fires) {
   const rings = feature.geometry.type === 'MultiPolygon'
     ? feature.geometry.coordinates.flat(2)
@@ -43,7 +43,7 @@ function getCountryFires(feature, fires) {
   const minLat = Math.min(...lats), maxLat = Math.max(...lats);
   const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
   return fires
-    .filter(f => f[0] >= minLat && f[0] <= maxLat && f[1] >= minLng && f[1] <= maxLng)
+    .filter(f => f[3] === 1 && f[0] >= minLat && f[0] <= maxLat && f[1] >= minLng && f[1] <= maxLng)
     .sort((a, b) => b[2] - a[2])
     .slice(0, 10);
 }
@@ -368,6 +368,73 @@ function Badge({ children, color, bg, border }) {
     }}>
       {children}
     </span>
+  );
+}
+
+/* ─── Unverified Fire Mini Panel ─── */
+function UnverifiedPanel({ point, onClose }) {
+  const isMobile = window.innerWidth <= 600;
+  const panelStyle = isMobile ? {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    maxHeight: '40vh', borderRadius: '18px 18px 0 0',
+    borderTop: '1px solid rgba(255,180,0,0.2)',
+  } : {
+    position: 'absolute', top: 16, right: 0, bottom: 16,
+    width: 300, borderLeft: '1px solid rgba(255,180,0,0.12)',
+    borderRadius: 0,
+  };
+  return (
+    <div style={{
+      ...panelStyle,
+      zIndex: 30,
+      background: 'rgba(6,6,12,0.94)',
+      backdropFilter: 'blur(18px)',
+      WebkitBackdropFilter: 'blur(18px)',
+      overflowY: 'auto',
+      padding: isMobile ? '20px 16px 32px' : '24px 20px',
+      boxShadow: isMobile ? '0 -8px 40px rgba(0,0,0,0.7)' : '-8px 0 40px rgba(0,0,0,0.7)',
+      animation: 'slideInRight 0.4s cubic-bezier(0.34,1.3,0.64,1) both',
+    }}>
+      {isMobile && (
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.1)', margin: '0 auto 16px' }} />
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <div style={{ color: '#886622', fontSize: 8.5, fontWeight: 700, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 6 }}>
+            ⚠ Unverified Thermal Anomaly
+          </div>
+          {point.country && (
+            <div style={{ color: '#bbb', fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{point.country}</div>
+          )}
+          <div style={{ color: '#444', fontSize: 11.5 }}>
+            {point.lat.toFixed(3)}°, {point.lng.toFixed(3)}°
+          </div>
+          <div style={{ color: '#444', fontSize: 11, marginTop: 2 }}>
+            FRP: <span style={{ color: '#776633' }}>{point.frp} MW</span>
+          </div>
+        </div>
+        <button onClick={onClose} style={{
+          background: 'rgba(255,255,255,0.06)', border: 'none', color: '#666',
+          width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', fontSize: 13, flexShrink: 0,
+        }}>✕</button>
+      </div>
+
+      <div style={{
+        background: 'rgba(255,180,0,0.04)',
+        border: '1px solid rgba(255,180,0,0.12)',
+        borderRadius: 10, padding: '14px 14px',
+      }}>
+        <div style={{ color: '#887755', fontSize: 11, lineHeight: 1.75 }}>
+          This wildfire isn't verified yet. The heat source may be a low-intensity fire,
+          a solitary sensor pixel, or an industrial thermal emission — and has not met
+          the minimum intensity threshold for confirmed fire classification.
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12, color: '#2a2a2a', fontSize: 10, lineHeight: 1.7 }}>
+        Verified fires require: confidence = high · FRP ≥ 50 MW · cluster of ≥ 2 adjacent pixels.
+      </div>
+    </div>
   );
 }
 
@@ -761,10 +828,10 @@ function haversine(lat1, lng1, lat2, lng2) {
 /* ─── Fire Intensity Legend ─── */
 function FireLegend() {
   const tiers = [
-    { color: '#FFD700', range: '< 50 MW',    label: 'High' },
-    { color: '#FF6600', range: '50–150 MW',  label: 'Severe' },
-    { color: '#CC2200', range: '150–300 MW', label: 'Extreme' },
-    { color: '#8B1A1A', range: '> 300 MW',   label: 'Critical' },
+    { color: '#2a1510', range: 'Unverified',  label: 'Low conf / solitary', dim: true },
+    { color: '#FF6600', range: '50–150 MW',   label: 'Severe' },
+    { color: '#CC2200', range: '150–300 MW',  label: 'Extreme' },
+    { color: '#8B1A1A', range: '> 300 MW',    label: 'Critical' },
   ];
   return (
     <div style={{
@@ -777,12 +844,14 @@ function FireLegend() {
       <div style={{ color: '#FF8C00', fontSize: 8, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 2, fontWeight: 700 }}>
         Active Fire Hotspots
       </div>
-      <div style={{ color: '#444', fontSize: 7.5, marginBottom: 8 }}>FRP · High Confidence Only</div>
+      <div style={{ color: '#444', fontSize: 7.5, marginBottom: 8 }}>High Confidence · FRP ≥ 50 MW · Verified</div>
       {tiers.map((t, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i < 4 ? 5 : 0 }}>
           <div style={{
             width: 9, height: 9, borderRadius: '50%', flexShrink: 0,
-            background: t.color, boxShadow: `0 0 5px ${t.color}88`,
+            background: t.color,
+            boxShadow: t.dim ? 'none' : `0 0 5px ${t.color}88`,
+            border: t.dim ? '1px solid #443322' : 'none',
           }} />
           <span style={{ color: '#777', fontSize: 9.5, minWidth: 58 }}>{t.range}</span>
           <span style={{ color: '#3a3a3a', fontSize: 8.5 }}>{t.label}</span>
@@ -814,8 +883,8 @@ export default function FireGlobe() {
       .pointsData([])
       .pointLat(d => d[0])
       .pointLng(d => d[1])
-      .pointColor(d => fireColor(d[2]))
-      .pointRadius(d => Math.min(0.15 + d[2] / 250, 0.55))
+      .pointColor(d => d[3] === 1 ? fireColor(d[2]) : '#2a1510')
+      .pointRadius(d => d[3] === 1 ? Math.min(0.15 + d[2] / 250, 0.55) : 0.07)
       .pointAltitude(0)
       .pointsMerge(true)
       .pointResolution(4)
@@ -835,7 +904,7 @@ export default function FireGlobe() {
             const countryFeature = findCountryAtPoint(best[0], best[1], countriesRef.current);
             const countryName = countryFeature?.properties?.ADMIN || countryFeature?.properties?.name || null;
             setClickedCountry(null);
-            setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName });
+            setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName, verified: best[3] === 1 });
             g.pointOfView({ lat: best[0], lng: best[1], altitude: g.pointOfView().altitude }, 800);
             g.controls().autoRotate = false;
             return;
@@ -911,7 +980,7 @@ export default function FireGlobe() {
                 const countryFeature = findCountryAtPoint(best[0], best[1], countriesRef.current);
                 const countryName = countryFeature?.properties?.ADMIN || countryFeature?.properties?.name || null;
                 setClickedCountry(null);
-                setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName });
+                setClickedPoint({ lat: best[0], lng: best[1], frp: best[2], country: countryName, verified: best[3] === 1 });
                 g.pointOfView({ lat: best[0], lng: best[1], altitude: g.pointOfView().altitude }, 800);
                 g.controls().autoRotate = false;
                 return;
@@ -945,13 +1014,18 @@ export default function FireGlobe() {
   useEffect(() => {
     fetch('/api/fires')
       .then(r => r.json())
-      .then(fires => {
-        firesRef.current = fires;
+      .then(({ verified = [], unverified = [] }) => {
+        // Tag each point: verified=1, unverified=0
+        const allFires = [
+          ...verified.map(f => [f[0], f[1], f[2], 1]),
+          ...unverified.map(f => [f[0], f[1], f[2], 0]),
+        ];
+        firesRef.current = allFires;
         if (globe.current) {
-          globe.current.pointsData(fires);
-          /* Radar ping */
+          globe.current.pointsData(allFires);
+          /* Radar ping — verified only */
           globe.current
-            .ringsData(fires)
+            .ringsData(verified)
             .ringLat(d => d[0])
             .ringLng(d => d[1])
             .ringColor(() => t => `rgba(255,120,0,${Math.pow(1 - t, 1.4) * 0.7})`)
@@ -959,7 +1033,7 @@ export default function FireGlobe() {
             .ringPropagationSpeed(d => 1.6 + d[2] / 300)
             .ringRepeatPeriod(d => Math.max(1800 - d[2] * 4, 650));
         }
-        setFireCount(fires.length);
+        setFireCount(verified.length);
         setStatus('done');
       })
       .catch(() => setStatus('error'));
@@ -1045,7 +1119,14 @@ export default function FireGlobe() {
         </div>
       )}
 
-      {clickedPoint && (
+      {clickedPoint && !clickedPoint.verified && (
+        <UnverifiedPanel
+          point={clickedPoint}
+          onClose={() => setClickedPoint(null)}
+        />
+      )}
+
+      {clickedPoint && clickedPoint.verified && (
         <DetailPanel
           point={clickedPoint}
           onClose={() => {
