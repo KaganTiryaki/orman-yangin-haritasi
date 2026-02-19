@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
       /* confidence >= 95: 'h' for VIIRS categorical, or numeric >= 95 */
       const conf = ci >= 0 ? (c[ci]?.trim() || '') : '';
       const num  = parseFloat(conf);
-      if (conf.toLowerCase() === 'l' || (isNaN(num) && conf.toLowerCase() !== 'h' && conf.toLowerCase() !== 'n')) continue;
+      if (conf !== 'h') continue;
       fires.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
     }
     cache = fires;
