@@ -19,11 +19,10 @@ module.exports = async (req, res) => {
       const c = lines[i].split(',');
       if (c.length < h.length) continue;
       const frp = parseFloat(c[fi]) || 0;
-      if (frp < 10) continue;
-      /* confidence >= 95: 'h' for VIIRS categorical, or numeric >= 95 */
+      if (frp < 20) continue;
       const conf = ci >= 0 ? (c[ci]?.trim() || '') : '';
-      const num  = parseFloat(conf);
-      if (conf !== 'h') continue;
+      const isHigh = conf === 'h' || conf === 'high' || parseFloat(conf) > 70;
+      if (conf && !isHigh) continue;
       fires.push([+parseFloat(c[li]).toFixed(2), +parseFloat(c[lo]).toFixed(2), frp]);
     }
     cache = fires;
