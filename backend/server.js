@@ -117,7 +117,7 @@ app.get('/api/species', async (req, res) => {
 if (!process.env.VERCEL) {
   const buildPath = path.join(__dirname, '../frontend/build');
   app.use(express.static(buildPath));
-  app.get('*', (req, res) => res.sendFile(path.join(buildPath, 'index.html')));
+  app.get('/{*splat}', (req, res) => res.sendFile(path.join(buildPath, 'index.html')));
 }
 
 const PORT = process.env.PORT || 5000;

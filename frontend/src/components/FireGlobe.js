@@ -463,6 +463,41 @@ function SpeciesCard({ s }) {
   );
 }
 
+/* ─── Point-in-polygon (ray casting) ─── */
+function pointInRing(lng, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    if ((yi > lat) !== (yj > lat) && lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+      inside = !inside;
+  }
+  return inside;
+}
+
+function findCountryAtPoint(lat, lng, features) {
+  for (const f of features) {
+    const geom = f.geometry;
+    if (geom.type === 'Polygon') {
+      if (pointInRing(lng, lat, geom.coordinates[0])) return f;
+    } else if (geom.type === 'MultiPolygon') {
+      for (const poly of geom.coordinates)
+        if (pointInRing(lng, lat, poly[0])) return f;
+    }
+  }
+  return null;
+}
+
+/* ─── Altitude that fits country in view ─── */
+function getCountryAltitude(feature) {
+  const rings = feature.geometry.type === 'MultiPolygon'
+    ? feature.geometry.coordinates.flat(2)
+    : feature.geometry.coordinates[0];
+  const lngs = rings.map(c => c[0]), lats = rings.map(c => c[1]);
+  const span = Math.max(Math.max(...lats) - Math.min(...lats), Math.max(...lngs) - Math.min(...lngs));
+  return Math.min(Math.max(span / 28, 1.1), 4.2);
+}
+
 /* ─── Haversine distance in km ─── */
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371;
@@ -479,6 +514,7 @@ export default function FireGlobe() {
   const globe = useRef(null);
   const firesRef = useRef([]);
   const hoveredPolygonRef = useRef(null);
+  const countriesRef = useRef([]);
   const [status, setStatus] = useState('loading');
   const [fireCount, setFireCount] = useState(0);
   const [clickedPoint, setClickedPoint] = useState(null);
@@ -501,16 +537,33 @@ export default function FireGlobe() {
       .atmosphereColor('#1a5276')
       .atmosphereAltitude(0.15)
       .onGlobeClick(({ lat, lng }) => {
+        /* 1. Check for a nearby fire first (wins over country) */
         const fires = firesRef.current;
-        if (!fires.length) return;
-        let best = null, bestDist = Infinity;
-        for (const f of fires) {
-          const d = haversine(lat, lng, f[0], f[1]);
-          if (d < bestDist) { bestDist = d; best = f; }
+        if (fires.length) {
+          let best = null, bestDist = Infinity;
+          for (const f of fires) {
+            const d = haversine(lat, lng, f[0], f[1]);
+            if (d < bestDist) { bestDist = d; best = f; }
+          }
+          if (best && bestDist <= 50) {
+            setClickedCountry(null);
+            setClickedPoint({ lat: best[0], lng: best[1], frp: best[2] });
+            /* Rotate globe so fire point faces the camera */
+            g.pointOfView({ lat: best[0], lng: best[1], altitude: 2.2 }, 900);
+            g.controls().autoRotate = false;
+            return;
+          }
         }
-        if (best && bestDist <= 50) {
-          setClickedCountry(null);
-          setClickedPoint({ lat: best[0], lng: best[1], frp: best[2] });
+        /* 2. No nearby fire — show country panel */
+        const country = findCountryAtPoint(lat, lng, countriesRef.current);
+        if (country) {
+          const center = getCountryCenter(country);
+          const name   = country.properties.ADMIN || country.properties.name || '—';
+          const iso    = (country.properties.ISO_A2 || '').toLowerCase();
+          const alt    = getCountryAltitude(country);
+          setClickedPoint(null);
+          setClickedCountry({ feature: country, name, iso, center });
+          g.pointOfView({ lat: center.lat, lng: center.lng, altitude: alt }, 1000);
           g.controls().autoRotate = false;
         }
       });
@@ -539,10 +592,13 @@ export default function FireGlobe() {
     fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
       .then(r => r.json())
       .then(geo => {
+        countriesRef.current = geo.features;
+
         const makeCapColor = d => d === hoveredPolygonRef.current ? 'rgba(0,255,255,0.1)' : 'rgba(0,0,0,0)';
         const makeStroke   = d => d === hoveredPolygonRef.current ? '#00ffff' : 'rgba(255,255,255,0.22)';
         const makeAlt      = d => d === hoveredPolygonRef.current ? 0.015 : 0.005;
 
+        /* onPolygonClick removed — handled by onGlobeClick for priority control */
         g.polygonsData(geo.features)
           .polygonCapColor(makeCapColor)
           .polygonSideColor(() => 'rgba(0,0,0,0)')
@@ -551,20 +607,9 @@ export default function FireGlobe() {
           .polygonsTransitionDuration(260)
           .onPolygonHover(polygon => {
             hoveredPolygonRef.current = polygon || null;
-            /* Re-call accessors so globe.gl transitions to new colors */
             g.polygonCapColor(makeCapColor);
             g.polygonStrokeColor(makeStroke);
             g.polygonAltitude(makeAlt);
-          })
-          .onPolygonClick(polygon => {
-            const center = getCountryCenter(polygon);
-            const name   = polygon.properties.ADMIN || polygon.properties.name || '—';
-            const iso    = (polygon.properties.ISO_A2 || '').toLowerCase();
-            setClickedPoint(null);
-            setClickedCountry({ feature: polygon, name, iso, center });
-            /* Smooth zoom to country — globe.gl built-in tween */
-            g.pointOfView({ lat: center.lat, lng: center.lng, altitude: 1.5 }, 1000);
-            g.controls().autoRotate = false;
           });
       })
       .catch(() => { /* GeoJSON fetch failed — borders just won't show */ });
