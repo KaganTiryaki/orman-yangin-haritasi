@@ -29,6 +29,12 @@ function getCountryCenter(feature) {
   };
 }
 
+/* ─── Build Google News search URL ─── */
+function buildNewsUrl(name, lat, lng) {
+  const region = name || (lat != null ? `${parseFloat(lat).toFixed(3)},${parseFloat(lng).toFixed(3)}` : 'wildfire');
+  return `https://www.google.com/search?q=${encodeURIComponent(region + ' forest fire wildfire')}&tbm=nws`;
+}
+
 /* ─── Filter fires inside country bounding box ─── */
 function getCountryFires(feature, fires) {
   const rings = feature.geometry.type === 'MultiPolygon'
@@ -258,6 +264,30 @@ function CountryPanel({ country, fires, onClose }) {
           )}
         </CpSection>
 
+        <hr style={{ border: 'none', borderTop: '1px solid rgba(0,255,255,0.05)', margin: '12px 0' }} />
+
+        {/* News Verification */}
+        <CpSection title="News Verification" icon="📰" info="Search for recent wildfire news coverage for this country via Google News.">
+          <a
+            href={buildNewsUrl(country.name, country.center.lat, country.center.lng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              background: 'rgba(0,255,255,0.05)',
+              border: '1px solid rgba(0,255,255,0.14)',
+              borderRadius: 7, padding: '8px 12px',
+              color: '#00cccc', fontSize: 11, fontWeight: 600,
+              textDecoration: 'none', letterSpacing: 0.3,
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,255,255,0.1)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,255,255,0.05)'}
+          >
+            🔍 Search on Google News — {country.name}
+          </a>
+        </CpSection>
+
         <div style={{ color: '#162222', fontSize: 9, marginTop: 14, textAlign: 'right' }}>
           NASA FIRMS · OpenAQ · GBIF
         </div>
@@ -393,6 +423,14 @@ function DetailPanel({ point, onClose }) {
   const distKm = aqData?.location?.distance != null
     ? (aqData.location.distance / 1000).toFixed(1) : null;
 
+  /* Best available region name for news search */
+  const newsRegion =
+    locData?.address?.state ||
+    locData?.address?.county ||
+    locData?.address?.country ||
+    point.country ||
+    null;
+
   /* Urban / industrial detection */
   const industrialTypes = ['industrial', 'commercial', 'retail', 'port', 'harbour'];
   const isIndustrial = locData && (
@@ -525,7 +563,7 @@ function DetailPanel({ point, onClose }) {
               News verification is currently unavailable. Click the button below for a manual search.
             </div>
             <a
-              href={`https://news.google.com/search?q=${encodeURIComponent((point.country || 'wildfire') + ' wildfire fire')}`}
+              href={buildNewsUrl(newsRegion, point.lat, point.lng)}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -547,7 +585,7 @@ function DetailPanel({ point, onClose }) {
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
               onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
             >
-              🔍 Search on Google News
+              🔍 Search on Google News — {newsRegion || `${point.lat.toFixed(2)}°, ${point.lng.toFixed(2)}°`}
             </a>
           </div>
         )}
