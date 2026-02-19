@@ -598,7 +598,6 @@ export default function FireGlobe() {
         const makeStroke   = d => d === hoveredPolygonRef.current ? '#00ffff' : 'rgba(255,255,255,0.22)';
         const makeAlt      = d => d === hoveredPolygonRef.current ? 0.015 : 0.005;
 
-        /* onPolygonClick removed — handled by onGlobeClick for priority control */
         g.polygonsData(geo.features)
           .polygonCapColor(makeCapColor)
           .polygonSideColor(() => 'rgba(0,0,0,0)')
@@ -610,6 +609,32 @@ export default function FireGlobe() {
             g.polygonCapColor(makeCapColor);
             g.polygonStrokeColor(makeStroke);
             g.polygonAltitude(makeAlt);
+          })
+          .onPolygonClick((polygon, ev, { lat, lng }) => {
+            /* Polygons cover land — handle fire + country here too */
+            const fires = firesRef.current;
+            if (fires.length) {
+              let best = null, bestDist = Infinity;
+              for (const f of fires) {
+                const d = haversine(lat, lng, f[0], f[1]);
+                if (d < bestDist) { bestDist = d; best = f; }
+              }
+              if (best && bestDist <= 50) {
+                setClickedCountry(null);
+                setClickedPoint({ lat: best[0], lng: best[1], frp: best[2] });
+                g.pointOfView({ lat: best[0], lng: best[1], altitude: 2.2 }, 900);
+                g.controls().autoRotate = false;
+                return;
+              }
+            }
+            const center = getCountryCenter(polygon);
+            const name   = polygon.properties.ADMIN || polygon.properties.name || '—';
+            const iso    = (polygon.properties.ISO_A2 || '').toLowerCase();
+            const alt    = getCountryAltitude(polygon);
+            setClickedPoint(null);
+            setClickedCountry({ feature: polygon, name, iso, center });
+            g.pointOfView({ lat: center.lat, lng: center.lng, altitude: alt }, 1000);
+            g.controls().autoRotate = false;
           });
       })
       .catch(() => { /* GeoJSON fetch failed — borders just won't show */ });
