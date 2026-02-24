@@ -50,7 +50,7 @@ function TipCard({ tip, delay }) {
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 16,
-        padding: '30px 26px',
+        padding: 'clamp(18px, 4vw, 30px) clamp(16px, 3vw, 26px)',
         cursor: 'default',
         position: 'relative',
         overflow: 'hidden',
@@ -123,8 +123,8 @@ export default function PreventionTips() {
 
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: 20,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+        gap: 16,
         maxWidth: 1000,
         margin: '0 auto'
       }}>

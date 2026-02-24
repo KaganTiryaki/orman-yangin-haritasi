@@ -7,30 +7,32 @@ import './App.css';
 
 function NavPill() {
   const { pathname } = useLocation();
-  const tab = (to, label, active) => ({
+  const isMobile = window.innerWidth <= 600;
+  const tab = (active) => ({
     display: 'inline-block',
-    padding: '7px 16px',
+    padding: isMobile ? '10px 18px' : '7px 16px',
     borderRadius: 16,
-    fontSize: 12,
+    fontSize: isMobile ? 13 : 12,
     fontWeight: active ? 600 : 400,
     color: active ? '#fff' : '#666',
     background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
     textDecoration: 'none',
     transition: 'all 0.2s',
     letterSpacing: 0.5,
+    WebkitTapHighlightColor: 'transparent',
   });
   const isMap = pathname === '/';
   return (
     <div style={{
-      position: 'fixed', top: 14, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
-      background: 'rgba(8,8,12,0.75)', backdropFilter: 'blur(12px)',
+      position: 'fixed', top: isMobile ? 10 : 14, left: '50%', transform: 'translateX(-50%)', zIndex: 100,
+      background: 'rgba(8,8,12,0.82)', backdropFilter: 'blur(12px)',
       WebkitBackdropFilter: 'blur(12px)',
       borderRadius: 20, padding: 4,
       border: '1px solid rgba(255,255,255,0.08)',
       display: 'flex', gap: 2,
     }}>
-      <Link to="/" style={tab('/', '🌍 Fire Map', isMap)}>🌍 Fire Map</Link>
-      <Link to="/water" style={tab('/water', '💧 Water', !isMap)}>💧 Water</Link>
+      <Link to="/" style={tab(isMap)}>🌍 Fire Map</Link>
+      <Link to="/water" style={tab(!isMap)}>💧 Water</Link>
     </div>
   );
 }

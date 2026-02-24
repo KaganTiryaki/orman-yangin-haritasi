@@ -827,6 +827,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 
 /* ─── Fire Intensity Legend ─── */
 function FireLegend() {
+  const isMobile = window.innerWidth <= 600;
   const tiers = [
     { color: '#2a1510', range: 'Unverified',  label: 'Low conf / solitary', dim: true },
     { color: '#FF6600', range: '50–150 MW',   label: 'Severe' },
@@ -835,26 +836,27 @@ function FireLegend() {
   ];
   return (
     <div style={{
-      position: 'absolute', bottom: 20, left: 20, zIndex: 10,
-      background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)',
+      position: 'absolute', bottom: isMobile ? 10 : 20, left: isMobile ? 8 : 20, zIndex: 10,
+      background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
       border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: 10, padding: '10px 13px',
+      borderRadius: isMobile ? 8 : 10, padding: isMobile ? '7px 10px' : '10px 13px',
     }}>
-      <div style={{ color: '#FF8C00', fontSize: 8, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 2, fontWeight: 700 }}>
+      <div style={{ color: '#FF8C00', fontSize: isMobile ? 7 : 8, letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 2, fontWeight: 700 }}>
         Active Fire Hotspots
       </div>
-      <div style={{ color: '#444', fontSize: 7.5, marginBottom: 8 }}>High Confidence · FRP ≥ 50 MW · Verified</div>
+      {!isMobile && <div style={{ color: '#444', fontSize: 7.5, marginBottom: 8 }}>High Confidence · FRP ≥ 50 MW · Verified</div>}
+      {isMobile && <div style={{ color: '#444', fontSize: 6.5, marginBottom: 5 }}>Verified · FRP ≥ 50 MW</div>}
       {tiers.map((t, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: i < 4 ? 5 : 0 }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 5 : 8, marginBottom: i < 4 ? (isMobile ? 3 : 5) : 0 }}>
           <div style={{
-            width: 9, height: 9, borderRadius: '50%', flexShrink: 0,
+            width: isMobile ? 7 : 9, height: isMobile ? 7 : 9, borderRadius: '50%', flexShrink: 0,
             background: t.color,
             boxShadow: t.dim ? 'none' : `0 0 5px ${t.color}88`,
             border: t.dim ? '1px solid #443322' : 'none',
           }} />
-          <span style={{ color: '#777', fontSize: 9.5, minWidth: 58 }}>{t.range}</span>
-          <span style={{ color: '#3a3a3a', fontSize: 8.5 }}>{t.label}</span>
+          <span style={{ color: '#777', fontSize: isMobile ? 8 : 9.5, minWidth: isMobile ? 46 : 58 }}>{t.range}</span>
+          {!isMobile && <span style={{ color: '#3a3a3a', fontSize: 8.5 }}>{t.label}</span>}
         </div>
       ))}
     </div>
@@ -1047,23 +1049,23 @@ export default function FireGlobe() {
 
       {/* Info panel top-left */}
       <div style={{
-        position: 'absolute', top: isMobile ? 12 : 20, left: isMobile ? 12 : 20, zIndex: 10,
-        background: 'rgba(0,0,0,0.7)', padding: isMobile ? '10px 14px' : '14px 18px',
+        position: 'absolute', top: isMobile ? 50 : 20, left: isMobile ? 10 : 20, zIndex: 10,
+        background: 'rgba(0,0,0,0.7)', padding: isMobile ? '8px 12px' : '14px 18px',
         borderRadius: 10, backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.08)',
-        maxWidth: hasPanel && !isMobile ? 'calc(100% - 380px)' : undefined,
+        maxWidth: isMobile ? 'calc(100% - 20px)' : hasPanel ? 'calc(100% - 380px)' : undefined,
       }}>
-        <div style={{ color: '#fff', fontSize: isMobile ? 15 : 18, fontWeight: 700, marginBottom: 4 }}>
+        <div style={{ color: '#fff', fontSize: isMobile ? 14 : 18, fontWeight: 700, marginBottom: 3 }}>
           Worldwide Fire Map
         </div>
-        <div style={{ color: '#aaa', fontSize: isMobile ? 11 : 13 }}>Active fires in the last 24h</div>
+        <div style={{ color: '#aaa', fontSize: isMobile ? 10 : 13 }}>Active fires in the last 24h</div>
         {status === 'done' && (
-          <div style={{ color: '#FF8C00', fontSize: isMobile ? 18 : 22, fontWeight: 700, marginTop: 6 }}>
+          <div style={{ color: '#FF8C00', fontSize: isMobile ? 16 : 22, fontWeight: 700, marginTop: isMobile ? 4 : 6 }}>
             {fireCount.toLocaleString()}
-            <span style={{ color: '#aaa', fontSize: isMobile ? 10 : 12, fontWeight: 400, marginLeft: 5 }}>extreme heat sources</span>
+            <span style={{ color: '#aaa', fontSize: isMobile ? 9 : 12, fontWeight: 400, marginLeft: 5 }}>extreme heat sources</span>
           </div>
         )}
-        {status === 'done' && (
+        {status === 'done' && !isMobile && (
           <div style={{ color: '#555', fontSize: 10, marginTop: 5 }}>Click a fire point or country</div>
         )}
         {!isMobile && (
@@ -1107,7 +1109,7 @@ export default function FireGlobe() {
 
       <FireLegend />
 
-      {!hasPanel && (
+      {!hasPanel && !isMobile && (
         <div style={{
           position: 'absolute', bottom: 24, left: '50%',
           transform: 'translateX(-50%)', zIndex: 10,

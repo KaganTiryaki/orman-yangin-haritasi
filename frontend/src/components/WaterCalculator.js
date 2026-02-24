@@ -132,11 +132,12 @@ function SL({ label }) {
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
 function Stepper({ icon, label, value, min, max, onChange }) {
+  const isMob = window.innerWidth <= 600;
   const btn = {
-    width: 24, height: 24, borderRadius: 4,
+    width: isMob ? 34 : 24, height: isMob ? 34 : 24, borderRadius: isMob ? 6 : 4,
     background: 'rgba(255,255,255,0.04)',
     border: `1px solid ${BORDER}`,
-    color: TEXT2, fontSize: 14, lineHeight: 1, cursor: 'pointer',
+    color: TEXT2, fontSize: isMob ? 16 : 14, lineHeight: 1, cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'border-color 0.15s',
   };
@@ -195,7 +196,7 @@ function Slider({ icon, label, sub, value, min, max, step, unit, onChange }) {
         <input
           type="range" min={min} max={max} step={step || 1} value={value}
           onChange={e => onChange(+e.target.value)} className="wc-range"
-          style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: 0, width: '100%', margin: 0, opacity: 0, cursor: 'pointer', height: 16 }}
+          style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: 0, width: '100%', margin: 0, opacity: 0, cursor: 'pointer', height: 28 }}
         />
       </div>
     </div>
@@ -350,15 +351,19 @@ export default function WaterCalculator() {
     <>
       <style>{`
         .wc-range{-webkit-appearance:none;appearance:none;background:transparent}
-        .wc-range::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:${ACC};cursor:pointer;transition:transform 0.1s}
-        .wc-range::-webkit-slider-thumb:active{transform:scale(1.3)}
-        .wc-range::-moz-range-thumb{width:11px;height:11px;border-radius:50%;background:${ACC};cursor:pointer;border:none}
+        .wc-range::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:${ACC};cursor:pointer;transition:transform 0.1s}
+        .wc-range::-webkit-slider-thumb:active{transform:scale(1.2)}
+        .wc-range::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:${ACC};cursor:pointer;border:none}
+        @media(min-width:601px){
+          .wc-range::-webkit-slider-thumb{width:11px;height:11px}
+          .wc-range::-moz-range-thumb{width:11px;height:11px}
+        }
       `}</style>
 
-      <div style={{ background: '#000', padding: 'clamp(40px, 6vw, 80px) clamp(16px, 4vw, 32px) 60px' }}>
+      <div style={{ background: '#000', padding: 'clamp(40px, 6vw, 80px) clamp(12px, 4vw, 32px) 60px' }}>
 
         {/* ── HEADER ── centered, staggered children */}
-        <div style={{ textAlign: 'center', marginBottom: 44 }}>
+        <div style={{ textAlign: 'center', marginBottom: 'clamp(28px, 5vw, 44px)' }}>
           <motion.div {...fadeUp(0)} style={{ color: TEXT2, fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 }}>
             Water Footprint Analysis
           </motion.div>
@@ -377,7 +382,7 @@ export default function WaterCalculator() {
           </motion.p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 14, maxWidth: 1100, margin: '0 auto' }}>
 
           {/* ── INPUTS ── staggered cards */}
           <motion.div
