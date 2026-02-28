@@ -933,10 +933,24 @@ export default function FireGlobe() {
     g.controls().enableZoom = false;
 
     const el = ref.current;
-    el.addEventListener('mousedown', () => { g.controls().autoRotate = false; });
-    el.addEventListener('mouseup',   () => { g.controls().autoRotate = true; });
-    el.addEventListener('touchstart', () => { g.controls().autoRotate = false; }, { passive: true });
-    el.addEventListener('touchend',   () => { g.controls().autoRotate = true;  }, { passive: true });
+    const mobile = window.innerWidth <= 600;
+
+    if (mobile) {
+      /* On mobile: disable touch rotation so page can scroll vertically.
+         Globe still auto-rotates and fires are still clickable. */
+      g.controls().enableRotate = false;
+      g.controls().enablePan = false;
+      el.style.touchAction = 'pan-y';
+      /* Also set on the canvas itself */
+      const canvas = el.querySelector('canvas');
+      if (canvas) canvas.style.touchAction = 'pan-y';
+    } else {
+      el.addEventListener('mousedown', () => { g.controls().autoRotate = false; });
+      el.addEventListener('mouseup',   () => { g.controls().autoRotate = true; });
+    }
+
+    el.addEventListener('touchstart', () => { if (!mobile) g.controls().autoRotate = false; }, { passive: true });
+    el.addEventListener('touchend',   () => { if (!mobile) g.controls().autoRotate = true;  }, { passive: true });
 
     const onKeyDown = (e) => { if (e.key === 'Control') { g.controls().enableZoom = true;  setCtrlHeld(true);  } };
     const onKeyUp   = (e) => { if (e.key === 'Control') { g.controls().enableZoom = false; setCtrlHeld(false); } };
@@ -944,7 +958,9 @@ export default function FireGlobe() {
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup',   onKeyUp);
     window.addEventListener('blur', onBlur);
-    el.addEventListener('wheel', (e) => { if (!e.ctrlKey) e.stopPropagation(); }, { capture: true, passive: true });
+    if (!mobile) {
+      el.addEventListener('wheel', (e) => { if (!e.ctrlKey) e.stopPropagation(); }, { capture: true, passive: true });
+    }
 
     /* ── Country borders (globe.gl polygon API = Three.js Raycaster internally) ── */
     fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
