@@ -936,21 +936,44 @@ export default function FireGlobe() {
     const mobile = window.innerWidth <= 600;
 
     if (mobile) {
-      /* On mobile: disable touch rotation so page can scroll vertically.
-         Globe still auto-rotates and fires are still clickable. */
-      g.controls().enableRotate = true;
+      /* On mobile: disable OrbitControls rotation (it conflicts with touch-action).
+         Instead, implement manual horizontal rotation via pointOfView changes.
+         touch-action: pan-y lets the browser handle vertical scrolling natively,
+         and horizontal touchmove events still reach JS for globe rotation. */
+      g.controls().enableRotate = false;
       g.controls().enablePan = false;
       el.style.touchAction = 'pan-y';
-      /* Also set on the canvas itself */
       const canvas = el.querySelector('canvas');
       if (canvas) canvas.style.touchAction = 'pan-y';
+
+      let lastTouchX = null;
+      el.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          lastTouchX = e.touches[0].clientX;
+          g.controls().autoRotate = false;
+        }
+      }, { passive: true });
+      el.addEventListener('touchmove', (e) => {
+        if (lastTouchX === null || e.touches.length !== 1) return;
+        const dx = e.touches[0].clientX - lastTouchX;
+        if (Math.abs(dx) > 1) {
+          const pov = g.pointOfView();
+          g.pointOfView({ lat: pov.lat, lng: pov.lng - dx * 0.25, altitude: pov.altitude }, 0);
+          lastTouchX = e.touches[0].clientX;
+        }
+      }, { passive: true });
+      el.addEventListener('touchend', () => {
+        lastTouchX = null;
+        g.controls().autoRotate = true;
+      }, { passive: true });
+      el.addEventListener('touchcancel', () => {
+        lastTouchX = null;
+        g.controls().autoRotate = true;
+      }, { passive: true });
     } else {
       el.addEventListener('mousedown', () => { g.controls().autoRotate = false; });
       el.addEventListener('mouseup',   () => { g.controls().autoRotate = true; });
     }
-
-    el.addEventListener('touchstart', () => { if (!mobile) g.controls().autoRotate = false; }, { passive: true });
-    el.addEventListener('touchend',   () => { if (!mobile) g.controls().autoRotate = true;  }, { passive: true });
 
     const onKeyDown = (e) => { if (e.key === 'Control') { g.controls().enableZoom = true;  setCtrlHeld(true);  } };
     const onKeyUp   = (e) => { if (e.key === 'Control') { g.controls().enableZoom = false; setCtrlHeld(false); } };
