@@ -938,7 +938,7 @@ export default function FireGlobe() {
     if (mobile) {
       /* On mobile: disable touch rotation so page can scroll vertically.
          Globe still auto-rotates and fires are still clickable. */
-      g.controls().enableRotate = false;
+      g.controls().enableRotate = true;
       g.controls().enablePan = false;
       el.style.touchAction = 'pan-y';
       /* Also set on the canvas itself */
