@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
 const tips = [
   {
@@ -36,15 +36,11 @@ const tips = [
 function TipCard({ tip, delay }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.9 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.95 }}
-      viewport={{ once: false, amount: 0.3 }}
+      initial={{ opacity: 0, y: 36 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: false, amount: 0.15 }}
       transition={{ duration: 0.5, delay, ease: 'easeOut' }}
-      whileHover={{
-        scale: 1.04, y: -6,
-        transition: { duration: 0.2 }
-      }}
+      whileHover={{ scale: 1.04, y: -6, transition: { duration: 0.2 } }}
     >
       <div style={{
         background: 'rgba(255,255,255,0.03)',
@@ -60,27 +56,17 @@ function TipCard({ tip, delay }) {
           height: 2,
           background: 'linear-gradient(90deg, transparent, rgba(255,140,0,0.5), transparent)'
         }} />
-
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
           <div style={{
-            fontSize: 28,
-            width: 48, height: 48,
+            fontSize: 28, width: 48, height: 48,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(255,255,255,0.05)',
-            borderRadius: 12
+            background: 'rgba(255,255,255,0.05)', borderRadius: 12,
           }}>{tip.icon}</div>
-          <h3 style={{
-            color: '#e8e8e8', fontSize: 16, fontWeight: 600,
-            lineHeight: 1.3
-          }}>
+          <h3 style={{ color: '#e8e8e8', fontSize: 16, fontWeight: 600, lineHeight: 1.3 }}>
             {tip.title}
           </h3>
         </div>
-        <p style={{
-          color: '#888', fontSize: 13.5, lineHeight: 1.7
-        }}>
+        <p style={{ color: '#888', fontSize: 13.5, lineHeight: 1.7 }}>
           {tip.desc}
         </p>
       </div>
@@ -89,29 +75,46 @@ function TipCard({ tip, delay }) {
 }
 
 export default function PreventionTips() {
+  const { scrollY } = useScroll();
+
+  /* Globe is 75vh on mobile, 100vh on desktop.
+     Section invisible at scroll=0, fades in as user scrolls into it,
+     disappears again when scrolling back to top. */
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 600;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const globeH = vh * (isMobile ? 0.75 : 1);
+
+  /* Start fade-in when scrolled to ~55% of globe height,
+     fully visible ~80px past the globe's bottom edge. */
+  const opacity = useTransform(scrollY, [globeH * 0.55, globeH + 80], [0, 1]);
+  const y       = useTransform(scrollY, [globeH * 0.55, globeH + 80], [48, 0]);
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#000',
-      padding: 'clamp(50px, 8vw, 100px) clamp(16px, 5vw, 40px) 80px'
-    }}>
+    <motion.div
+      style={{
+        opacity, y,
+        minHeight: '100vh',
+        background: '#000',
+        padding: 'clamp(50px, 8vw, 100px) clamp(16px, 5vw, 40px) 80px',
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: false, amount: 0.5 }}
+        viewport={{ once: false, amount: 0.3 }}
         transition={{ duration: 0.6 }}
         style={{ textAlign: 'center', marginBottom: 60 }}
       >
         <span style={{
           color: '#FF8C00', fontSize: 13, fontWeight: 500,
           letterSpacing: 4, textTransform: 'uppercase',
-          display: 'block', marginBottom: 14
+          display: 'block', marginBottom: 14,
         }}>
           Prevention Guide
         </span>
         <h2 style={{
           color: '#fff', fontSize: 'clamp(26px, 6vw, 36px)', fontWeight: 700,
-          marginBottom: 14
+          marginBottom: 14,
         }}>
           How to Prevent Wildfires
         </h2>
@@ -126,10 +129,10 @@ export default function PreventionTips() {
         gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
         gap: 16,
         maxWidth: 1000,
-        margin: '0 auto'
+        margin: '0 auto',
       }}>
         {tips.map((tip, i) => (
-          <TipCard key={i} tip={tip} delay={i * 0.1} />
+          <TipCard key={i} tip={tip} delay={i * 0.08} />
         ))}
       </div>
 
@@ -137,14 +140,11 @@ export default function PreventionTips() {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: false }}
-        transition={{ duration: 0.8, delay: 0.6 }}
-        style={{
-          textAlign: 'center', marginTop: 60,
-          color: '#333', fontSize: 12
-        }}
+        transition={{ duration: 0.8, delay: 0.5 }}
+        style={{ textAlign: 'center', marginTop: 60, color: '#333', fontSize: 12 }}
       >
         Data provided by NASA FIRMS
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
