@@ -936,43 +936,17 @@ export default function FireGlobe() {
     const mobile = window.innerWidth <= 600;
 
     if (mobile) {
-      /* On mobile: disable OrbitControls rotation (it conflicts with touch-action).
-         Instead, implement manual horizontal rotation via pointOfView changes.
-         touch-action: pan-y lets the browser handle vertical scrolling natively,
-         and horizontal touchmove events still reach JS for globe rotation. */
-      g.controls().enableRotate = false;
+      /* On mobile: globe is 75vh so scroll area is below it — no touch conflict.
+         Let OrbitControls handle full 2D rotation (lat + lng).
+         Disable pan (not useful), enable pinch-zoom. */
       g.controls().enablePan = false;
-      el.style.touchAction = 'pan-y';
-      const canvas = el.querySelector('canvas');
-      if (canvas) canvas.style.touchAction = 'pan-y';
-
-      let lastTouchX = null;
-      el.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          lastTouchX = e.touches[0].clientX;
-          g.controls().autoRotate = false;
-        }
-      }, { passive: true });
-      el.addEventListener('touchmove', (e) => {
-        if (lastTouchX === null || e.touches.length !== 1) return;
-        const dx = e.touches[0].clientX - lastTouchX;
-        if (Math.abs(dx) > 1) {
-          const pov = g.pointOfView();
-          g.pointOfView({ lat: pov.lat, lng: pov.lng - dx * 0.25, altitude: pov.altitude }, 0);
-          lastTouchX = e.touches[0].clientX;
-        }
-      }, { passive: true });
-      el.addEventListener('touchend', () => {
-        lastTouchX = null;
-        g.controls().autoRotate = true;
-      }, { passive: true });
-      el.addEventListener('touchcancel', () => {
-        lastTouchX = null;
-        g.controls().autoRotate = true;
-      }, { passive: true });
+      g.controls().enableZoom = true;
+      el.addEventListener('touchstart', () => { g.controls().autoRotate = false; }, { passive: true });
+      el.addEventListener('touchend',   () => { g.controls().autoRotate = true;  }, { passive: true });
     } else {
       el.addEventListener('mousedown', () => { g.controls().autoRotate = false; });
       el.addEventListener('mouseup',   () => { g.controls().autoRotate = true; });
+      el.addEventListener('wheel', (e) => { if (!e.ctrlKey) e.stopPropagation(); }, { capture: true, passive: true });
     }
 
     const onKeyDown = (e) => { if (e.key === 'Control') { g.controls().enableZoom = true;  setCtrlHeld(true);  } };
@@ -981,9 +955,6 @@ export default function FireGlobe() {
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup',   onKeyUp);
     window.addEventListener('blur', onBlur);
-    if (!mobile) {
-      el.addEventListener('wheel', (e) => { if (!e.ctrlKey) e.stopPropagation(); }, { capture: true, passive: true });
-    }
 
     /* ── Country borders (globe.gl polygon API = Three.js Raycaster internally) ── */
     fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
@@ -1039,7 +1010,10 @@ export default function FireGlobe() {
       })
       .catch(() => { /* GeoJSON fetch failed — borders just won't show */ });
 
-    const resize = () => { g.width(window.innerWidth); g.height(window.innerHeight); };
+    const resize = () => {
+      g.width(window.innerWidth);
+      g.height(mobile ? Math.round(window.innerHeight * 0.75) : window.innerHeight);
+    };
     window.addEventListener('resize', resize);
     resize();
 
@@ -1083,12 +1057,12 @@ export default function FireGlobe() {
   const hasPanel = clickedPoint || clickedCountry;
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+    <div style={{ width: '100%', height: isMobile ? '75vh' : '100vh', position: 'relative' }}>
       <div ref={ref} style={{ width: '100%', height: '100%' }} />
 
       {/* Info panel top-left */}
       <div style={{
-        position: 'absolute', top: isMobile ? 50 : 20, left: isMobile ? 10 : 20, zIndex: 10,
+        position: 'absolute', top: isMobile ? 62 : 20, left: isMobile ? 10 : 20, zIndex: 10,
         background: 'rgba(0,0,0,0.7)', padding: isMobile ? '8px 12px' : '14px 18px',
         borderRadius: 10, backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.08)',
@@ -1148,15 +1122,20 @@ export default function FireGlobe() {
 
       <FireLegend />
 
-      {!hasPanel && !isMobile && (
+      {!hasPanel && (
         <div style={{
-          position: 'absolute', bottom: 24, left: '50%',
+          position: 'absolute', bottom: isMobile ? 10 : 24, left: '50%',
           transform: 'translateX(-50%)', zIndex: 10,
           textAlign: 'center', pointerEvents: 'none',
           animation: 'bounce 2s infinite',
         }}>
-          <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Scroll down</div>
-          <div style={{ color: '#888', fontSize: 20 }}>↓</div>
+          {isMobile
+            ? <div style={{ color: '#555', fontSize: 10, whiteSpace: 'nowrap' }}>swipe below ↓ for tips</div>
+            : <>
+                <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Scroll down</div>
+                <div style={{ color: '#888', fontSize: 20 }}>↓</div>
+              </>
+          }
         </div>
       )}
 
